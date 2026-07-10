@@ -61,7 +61,7 @@ PLUMBOB = """
     â—†
 """.strip()
 
-BANNER_ART = "â—ˆ SIMS 4 MOD GUARDIAN â—ˆ"
+BANNER_ART = "** SIMS 4 MOD GUARDIAN **"
 
 # â”€â”€ Utility helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -153,7 +153,7 @@ class StatCard(ctk.CTkFrame):
 class Sims4ModGuardApp(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title("â—ˆ Sims4 Mod Guardian â—ˆ  by Hucifer & Hypatia")
+        self.title("[ SIMS4 MOD GUARDIAN ]  by Hucifer + Hypatia")
         self.geometry("1100x780")
         self.minsize(900, 650)
         self.configure(fg_color=BG_DEEP)
@@ -206,8 +206,8 @@ class Sims4ModGuardApp(ctk.CTk):
         left.pack(side="left", padx=16, pady=8)
 
         ctk.CTkLabel(left,
-                     text="[>>]",
-                     font=("Courier New", 28),
+                     text="<>",
+                     font=("Courier New", 32, "bold"),
                      text_color=NEON_GREEN).pack(side="left", padx=(0, 10))
 
         title_box = ctk.CTkFrame(left, fg_color="transparent")
