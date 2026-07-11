@@ -254,7 +254,8 @@ def scan_package(path: Path) -> PackageScanResult:
 
 # ── Batch scanner ─────────────────────────────────────────────────────────────
 
-def scan_all_packages(mods_path: Path, max_files: int = 0) -> dict:
+def scan_all_packages(mods_path: Path, max_files: int = 0,
+                      progress_callback=None) -> dict:
     """
     Scan all .package files in mods_path (recursively).
 
@@ -279,18 +280,23 @@ def scan_all_packages(mods_path: Path, max_files: int = 0) -> dict:
     results = []
     name_map     = defaultdict(list)   # name  -> [paths]
     hash_map     = defaultdict(list)   # md5   -> [paths]
+    total = len(all_packages)
 
-    print(f"  Scanning {len(all_packages):,} .package files...", flush=True)
+    print(f"  Scanning {total:,} .package files...", flush=True)
 
     for i, pkg in enumerate(all_packages):
         if i % 500 == 0 and i > 0:
-            print(f"    {i:,}/{len(all_packages):,} scanned...", flush=True)
+            print(f"    {i:,}/{total:,} scanned...", flush=True)
 
         r = scan_package(pkg)
         results.append(r)
         name_map[pkg.name].append(pkg)
         if r.md5:
             hash_map[r.md5].append(pkg)
+
+        # Report real progress every 50 files (or always for small sets)
+        if progress_callback and (total <= 50 or i % 50 == 0 or i == total - 1):
+            progress_callback(i + 1, total)
 
     # Find actual duplicates
     dup_names   = {n: ps for n, ps in name_map.items()  if len(ps) > 1}

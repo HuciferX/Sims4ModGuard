@@ -25,7 +25,7 @@ from sims4modguard.cc_cleaner     import scan_all_packages
 from sims4modguard.log_parser     import parse_log
 from sims4modguard.quarantine     import QuarantineManager
 
-# â”€â”€ Theme constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# -- Theme constants ------------------------------------------------------------
 BG_DEEP     = "#050510"
 BG_PANEL    = "#0a0a1a"
 BG_CARD     = "#0f0f25"
@@ -54,16 +54,16 @@ ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("dark-blue")
 
 PLUMBOB = """
-    â—†
-   â—†â—†â—†
-  â—†â—†â—†â—†â—†
-   â—†â—†â—†
-    â—†
+    <>
+   <><><>
+  <><><><><>
+   <><><>
+    <>
 """.strip()
 
 BANNER_ART = "** SIMS 4 MOD GUARDIAN **"
 
-# â”€â”€ Utility helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# -- Utility helpers ------------------------------------------------------------
 
 def neon_frame(parent, color=NEON_GREEN, **kwargs):
     """Frame with colored border."""
@@ -128,7 +128,7 @@ class ConsoleText(tk.Text):
         self.configure(state="disabled")
 
 
-# â”€â”€ Stat card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# -- Stat card -----------------------------------------------------------------
 
 class StatCard(ctk.CTkFrame):
     def __init__(self, parent, label: str, value: str = "--",
@@ -148,7 +148,7 @@ class StatCard(ctk.CTkFrame):
         self._lbl_var.set(value)
 
 
-# â”€â”€ Main Application â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# -- Main Application ----------------------------------------------------------
 
 class Sims4ModGuardApp(ctk.CTk):
     def __init__(self):
@@ -175,7 +175,7 @@ class Sims4ModGuardApp(ctk.CTk):
         # Boot sequence
         self.after(600, self._boot_sequence)
 
-    # â”€â”€ Build UI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # -- Build UI --------------------------------------------------------------
 
     def _build_ui(self):
         # Header
@@ -230,7 +230,7 @@ class Sims4ModGuardApp(ctk.CTk):
                      font=("Courier New", 11, "bold"),
                      text_color=NEON_PINK).pack(anchor="e")
         ctk.CTkLabel(right,
-                     text="v1.0  â—ˆ  Community Edition",
+                     text="v1.0  *  Community Edition",
                      font=("Courier New", 8),
                      text_color=TEXT_DIM).pack(anchor="e")
 
@@ -318,7 +318,7 @@ class Sims4ModGuardApp(ctk.CTk):
             ("[??]   ABOUT",         "about",   self._build_about_tab),
         ]
 
-        ctk.CTkLabel(tab_btn_col, text="â—ˆ NAVIGATION â—ˆ",
+        ctk.CTkLabel(tab_btn_col, text="* NAVIGATION *",
                      font=FONT_SMALL, text_color="#00805a").pack(pady=(12, 6))
 
         for label, key, builder in tabs:
@@ -351,7 +351,7 @@ class Sims4ModGuardApp(ctk.CTk):
             fg_color=BG_CARD,
         )
 
-    # â”€â”€ Tab builders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # -- Tab builders ----------------------------------------------------------
 
     def _build_scan_tab(self, parent):
         # Action row
@@ -537,7 +537,7 @@ Built to survive patch 1.121 and every patch that follows.
                      justify="center").pack(pady=(20, 4))
 
         ctk.CTkLabel(parent,
-                     text="â—ˆ  Crafted by  â—ˆ\n\nHucifer  &  Hypatia",
+                     text="*  Crafted by  *\n\nHucifer  &  Hypatia",
                      font=("Courier New", 16, "bold"),
                      text_color=NEON_PINK,
                      justify="center").pack(pady=8)
@@ -549,7 +549,7 @@ Built to survive patch 1.121 and every patch that follows.
 
         ctk.CTkLabel(parent,
                      text="""
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+--------------------------------------------------
 
 WHAT THIS DOES
 
@@ -562,7 +562,7 @@ WHAT THIS DOES
   [OK]  Safe quarantine with full restore support
   [OK]  One-click cache clearing
 
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+--------------------------------------------------
 
 WHAT IT CANNOT DO
 
@@ -571,7 +571,7 @@ WHAT IT CANNOT DO
   âœ—  Auto-update every mod to its latest version
   âœ—  Replace mods that require Patreon login
 
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+--------------------------------------------------
 
 github.com/HuciferX/Sims4ModGuard
 """,
@@ -586,7 +586,7 @@ github.com/HuciferX/Sims4ModGuard
         sb.pack(fill="x", side="bottom", padx=0, pady=0)
         sb.pack_propagate(False)
 
-        self._status_var = tk.StringVar(value="â—ˆ READY -- Select a Sims 4 folder to begin")
+        self._status_var = tk.StringVar(value="* READY -- Select a Sims 4 folder to begin")
         ctk.CTkLabel(sb, textvariable=self._status_var,
                      font=FONT_SMALL, text_color=NEON_GREEN).pack(
                          side="left", padx=10, pady=4)
@@ -601,7 +601,7 @@ github.com/HuciferX/Sims4ModGuard
         self._time_var.set(datetime.now().strftime("%H:%M:%S"))
         self.after(1000, self._tick_time)
 
-    # â”€â”€ Queue poller â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # -- Queue poller ----------------------------------------------------------
 
     def _poll_queue(self):
         try:
@@ -633,14 +633,14 @@ github.com/HuciferX/Sims4ModGuard
     def _status(self, text: str):
         self._q.put({"action": "status", "text": text})
 
-    # â”€â”€ Auto-detect â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # -- Auto-detect -----------------------------------------------------------
 
     def _auto_detect(self):
         folder = find_s4_folder()
         if folder:
             self._set_folder(folder)
         else:
-            self._status("â—ˆ Could not auto-detect Sims 4 folder -- click BROWSE")
+            self._status("* Could not auto-detect Sims 4 folder -- click BROWSE")
 
     def _browse_folder(self):
         path = filedialog.askdirectory(
@@ -673,17 +673,17 @@ github.com/HuciferX/Sims4ModGuard
         self._stat_disabled.set(str(disabled))
         self._stat_cache.set(str(cache["thumbnail_cache_mb"]))
 
-        self._status(f"â—ˆ Sims 4 folder loaded -- {scripts} scripts, {packages:,} packages")
+        self._status(f"* Sims 4 folder loaded -- {scripts} scripts, {packages:,} packages")
         self._console.append(f"[LOADED] {folder}", "info")
         self._console.append(f"  Game: {version}  Scripts: {scripts}  Packages: {packages:,}", "dim")
 
-    # â”€â”€ Boot sequence â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # -- Boot sequence ---------------------------------------------------------
 
     def _boot_sequence(self):
         msgs = [
-            ("â—ˆ SIMS4 MOD GUARDIAN ONLINE â—ˆ", "header"),
+            ("* SIMS4 MOD GUARDIAN ONLINE *", "header"),
             ("by Hucifer & Hypatia -- Community Edition", "pink"),
-            ("â”€" * 55, "dim"),
+            ("-" * 55, "dim"),
             ("Initializing mod scanner engine...", "info"),
             ("Loading patch 1.121 detection rules...", "info"),
             ("DBPF parser: READY", "ok"),
@@ -691,7 +691,7 @@ github.com/HuciferX/Sims4ModGuard
             ("CC cleaner: READY", "ok"),
             ("Log parser: READY", "ok"),
             ("Quarantine manager: READY", "ok"),
-            ("â”€" * 55, "dim"),
+            ("-" * 55, "dim"),
             ("All systems ONLINE. Select a scan to begin.", "bold"),
         ]
         def send(i=0):
@@ -700,19 +700,19 @@ github.com/HuciferX/Sims4ModGuard
                 self.after(random.randint(40, 100), lambda: send(i + 1))
         send()
 
-    # â”€â”€ Scan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # -- Scan ------------------------------------------------------------------
 
     def _run_script_scan(self):
         if not self.mods_folder:
             messagebox.showwarning("No Folder", "Select a Sims 4 folder first.")
             return
-        self._log("â”€" * 55, "dim")
+        self._log("-" * 55, "dim")
         self._log(">> Starting script scan...", "header")
         self._scan_progress.set(0)
         self._switch_tab("console")
 
         def worker():
-            self._status("â—ˆ SCANNING SCRIPTS...")
+            self._status("* SCANNING SCRIPTS...")
             results = scan_all_scripts(self.mods_folder)
             self._q.put({"action": "done_scan", "results": results})
 
@@ -774,27 +774,31 @@ github.com/HuciferX/Sims4ModGuard
                 self._log(f"  [{status.strip()}] {r.name}", "critical" if r.severity == SEVERITY_CRITICAL else "warning")
 
         self._switch_tab("scan")
-        self._status(f"â—ˆ Scan done -- {len(critical)} critical, {len(clean)} clean")
+        self._status(f"* Scan done -- {len(critical)} critical, {len(clean)} clean")
 
-    # â”€â”€ CC Scan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # -- CC Scan ---------------------------------------------------------------
 
     def _run_cc_scan(self):
         if not self.mods_folder:
             messagebox.showwarning("No Folder", "Select a Sims 4 folder first.")
             return
-        self._log("â”€" * 55, "dim")
+        self._log("-" * 55, "dim")
         self._log("[##] Starting CC package scan...", "header")
         self._log("  This may take several minutes on large collections.", "dim")
         self._cc_progress.set(0)
         self._switch_tab("console")
 
         def worker():
-            self._status("â—ˆ SCANNING CC PACKAGES...")
-            data = scan_all_packages(self.mods_folder)
+            self._status(">> SCANNING CC PACKAGES...")
+            def _progress_cb(current, total):
+                val = current / total if total > 0 else 0
+                self._q.put({"action": "progress", "bar": "cc", "val": val})
+                self._q.put({"action": "status",
+                             "text": f">> CC SCAN: {current:,} / {total:,} packages"})
+            data = scan_all_packages(self.mods_folder, progress_callback=_progress_cb)
             self._q.put({"action": "done_cc", "data": data})
 
         threading.Thread(target=worker, daemon=True).start()
-        self._fake_progress("cc")
 
     def _finish_cc(self, data):
         self._cc_data = data
@@ -817,7 +821,7 @@ github.com/HuciferX/Sims4ModGuard
         def add_section(title, items, color, detail_fn):
             if not items:
                 return
-            ctk.CTkLabel(frame, text=f"â”€â”€ {title} ({len(items)}) â”€â”€",
+            ctk.CTkLabel(frame, text=f"-- {title} ({len(items)}) --",
                          font=("Courier New", 10, "bold"),
                          text_color=color).pack(anchor="w", padx=8, pady=(8, 2))
             for r in items[:20]:
@@ -844,9 +848,9 @@ github.com/HuciferX/Sims4ModGuard
                          font=FONT_HEAD, text_color=NEON_GREEN).pack(pady=30)
 
         self._switch_tab("cc")
-        self._status(f"â—ˆ CC scan done -- {s['corrupt']} corrupt, {s['duplicate_names']} dup names")
+        self._status(f"* CC scan done -- {s['corrupt']} corrupt, {s['duplicate_names']} dup names")
 
-    # â”€â”€ Log parsing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # -- Log parsing -----------------------------------------------------------
 
     def _parse_logs(self):
         if not self.s4_folder:
@@ -854,7 +858,7 @@ github.com/HuciferX/Sims4ModGuard
             return
         self._log_text.clear()
         log_path = self.s4_folder / "lastException.txt"
-        self._log_text.append("â—ˆ Parsing lastException.txt...", "header")
+        self._log_text.append("* Parsing lastException.txt...", "header")
 
         def worker():
             summary = parse_log(log_path)
@@ -886,10 +890,10 @@ github.com/HuciferX/Sims4ModGuard
                 if err.explanation:
                     t.append(f"    â†’ {err.explanation}", "dim")
 
-        self._status(f"â—ˆ Log parsed -- {summary.total_errors} errors, "
+        self._status(f"* Log parsed -- {summary.total_errors} errors, "
                      f"{'CRASH DETECTED' if not summary.tuning_finished else 'no crash'}")
 
-    # â”€â”€ Fix actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # -- Fix actions -----------------------------------------------------------
 
     def _quarantine_critical(self):
         if not self._scan_results:
@@ -915,9 +919,9 @@ github.com/HuciferX/Sims4ModGuard
                 moved += 1
                 self._fix_log(f"  âœ— Quarantined: {r.name}", "critical")
 
-        self._fix_log(f"â—ˆ Done. {moved} scripts quarantined.", "bold")
+        self._fix_log(f"* Done. {moved} scripts quarantined.", "bold")
         self._clear_cache_silent()
-        self._status(f"â—ˆ {moved} scripts quarantined -- clearing cache")
+        self._status(f"* {moved} scripts quarantined -- clearing cache")
 
     def _clear_cache(self):
         if not self.s4_folder:
@@ -927,7 +931,7 @@ github.com/HuciferX/Sims4ModGuard
         mb = result["bytes_freed"] // (1024 * 1024)
         self._fix_log(f"  Cleared {len(result['files'])} cache files ({mb} MB freed)", "ok")
         self._stat_cache.set("0")
-        self._status("â—ˆ Caches cleared")
+        self._status("* Caches cleared")
 
     def _clear_cache_silent(self):
         if self.s4_folder:
@@ -947,8 +951,8 @@ github.com/HuciferX/Sims4ModGuard
                 if self.qm.restore(e["destination"]):
                     self._fix_log(f"  âœ“ Restored: {e['name']}", "ok")
                     restored += 1
-            self._fix_log(f"â—ˆ {restored} files restored.", "bold")
-            self._status(f"â—ˆ {restored} files restored from quarantine")
+            self._fix_log(f"* {restored} files restored.", "bold")
+            self._status(f"* {restored} files restored from quarantine")
 
     def _open_mods_folder(self):
         if self.mods_folder and self.mods_folder.exists():
@@ -973,7 +977,7 @@ github.com/HuciferX/Sims4ModGuard
                 for p in sorted(paths, key=lambda x: x.stat().st_mtime)[:-1]:
                     if self.qm.quarantine(p, f"Duplicate filename: {name}", auto=True):
                         moved += 1
-            self._fix_log(f"â—ˆ {moved} duplicate packages quarantined.", "bold")
+            self._fix_log(f"* {moved} duplicate packages quarantined.", "bold")
 
     def _show_manifest(self):
         if not self.qm:
