@@ -98,8 +98,8 @@ def _read_dbpf_header(data: bytes) -> Optional[dict]:
 
     try:
         index_count  = struct.unpack_from("<I", data, 36)[0]
-        index_offset = struct.unpack_from("<I", data, 40)[0]
-        index_size   = struct.unpack_from("<I", data, 44)[0]
+        index_offset = struct.unpack_from("<I", data, 44)[0]  # offset 44, not 40
+        index_size   = struct.unpack_from("<I", data, 48)[0]  # index size at 48
     except struct.error:
         return None
 
