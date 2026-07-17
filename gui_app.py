@@ -30,6 +30,7 @@ from sims4modguard.dlc_database   import DLC_CATALOG, TYPE_COLOR, dlc_summary
 from sims4modguard.game_index     import GameIndex, DEFAULT_GAME_ROOT
 from sims4modguard.boot_engine    import BootEngine, PHASES
 from sims4modguard.save_analyzer  import SaveAnalyzer
+from sims4modguard.run_logger     import RunLogger
 
 # -- Theme constants ------------------------------------------------------------
 BG_DEEP     = "#050510"
@@ -1994,6 +1995,9 @@ github.com/HuciferX/Sims4ModGuard
         NeonButton(action_row, "REBUILD INDEX",
                    command=self._rebuild_game_index,
                    color=NEON_CYAN, height=48, width=150).pack(side="left", padx=4)
+        NeonButton(action_row, "OPEN LAST REPORT",
+                   command=self._open_last_report,
+                   color=NEON_PURPLE, height=48, width=180).pack(side="left", padx=4)
         self._boot_prog_lbl = ctk.CTkLabel(action_row, text="",
                                             font=FONT_SMALL, text_color=TEXT_DIM)
         self._boot_prog_lbl.pack(side="left", padx=8)
@@ -2216,6 +2220,45 @@ github.com/HuciferX/Sims4ModGuard
 
         self._status(f"* Boot simulation done — {report.verdict_label} "
                      f"({report.crash_probability}% crash risk)")
+
+        # Auto-save HTML + text log
+        try:
+            logger = RunLogger()
+            from datetime import datetime
+            elapsed = ""
+            html_path, txt_path = logger.save(
+                report, quarantined=[], label=f"GUI run — {datetime.now().strftime('%H:%M:%S')}")
+            self._boot_console.append("-" * 50, "dim")
+            self._boot_console.append(f"LOG SAVED: {html_path.name}", "ok")
+            self._boot_console.append(f"  Open Last Report to view full breakdown.", "dim")
+            self._last_report_path = html_path
+        except Exception as e:
+            self._boot_console.append(f"(Log save failed: {e})", "warning")
+
+    def _open_last_report(self):
+        """Open the most recent HTML audit report in the default browser."""
+        import os
+        path = getattr(self, '_last_report_path', None)
+        if not path:
+            logger = RunLogger()
+            path = logger.open_latest()
+        if path and path.exists():
+            try:
+                os.startfile(str(path))
+                self._status(f"* Opened report: {path.name}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not open report:\n{e}")
+        else:
+            # No log yet — show the logs folder location
+            logger = RunLogger()
+            logs = logger.list_logs()
+            if logs:
+                import subprocess
+                subprocess.Popen(["explorer", str(logger.log_dir)])
+            else:
+                messagebox.showinfo("No Reports Yet",
+                    "No audit reports saved yet.\n"
+                    "Run a Boot Simulation to generate the first report.")
 
     def _boot_quarantine_critical(self):
         if not self._boot_report or not self.qm:

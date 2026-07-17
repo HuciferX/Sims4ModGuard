@@ -88,9 +88,9 @@ class BootIssue:
 @dataclass
 class PhaseResult:
     name:    str
-    status:  str            # PASS / WARN / FAIL / SKIP
+    status:  str = "PENDING"   # PASS / WARN / FAIL / SKIP / PENDING
     issues:  List[BootIssue] = field(default_factory=list)
-    stats:   dict           = field(default_factory=dict)
+    stats:   dict            = field(default_factory=dict)
 
 
 @dataclass
@@ -428,10 +428,42 @@ class BootEngine:
 
     # ── Phase 5: IMPORT PROBE ─────────────────────────────────────────────────
 
+    # Modules we must NEVER stub — they are stdlib C extensions that zipfile,
+    # importlib, and other built-ins depend on at runtime.
+    _STUB_BLACKLIST: set = set()
+
+    @classmethod
+    def _get_stub_blacklist(cls) -> set:
+        if not cls._STUB_BLACKLIST:
+            # Python 3.10+ provides a complete stdlib list
+            bl = set(getattr(sys, 'stdlib_module_names', set()))
+            # Augment with common C extension names that may not be in stdlib_module_names
+            bl |= {
+                'zlib', 'binascii', '_io', 'io', 'struct', '_struct',
+                'os', 'os.path', 'posix', 'nt', 'codecs', '_codecs',
+                'string', 'enum', 'abc', 'functools', '_functools',
+                'operator', '_operator', 'itertools', 'collections',
+                '_collections', 'copy', 'types', 'weakref', 'threading',
+                '_thread', 'queue', 'time', 'math', '_math', 'reprlib',
+                'socket', 'ssl', 'json', 'json.decoder', 'json.encoder',
+                'zipfile', 'tarfile', 'gzip', 'pathlib', 'stat', 'fnmatch',
+                'importlib', 'importlib.abc', 'importlib.util',
+                'importlib.machinery', 'importlib.metadata',
+                'importlib._bootstrap', 'importlib._bootstrap_external',
+                '_warnings', 'warnings', 'builtins', '_builtins',
+                'gc', '_gc', 'sys', 'traceback', 'linecache', 'tokenize',
+                'token', 'keyword', 'dis', 'inspect', 'ast', 'compile',
+                'site', 'signal', 'select', 'errno', 'ctypes',
+                'ctypes.util', '_ctypes', 'array', '_array',
+            }
+            cls._STUB_BLACKLIST = bl
+        return cls._STUB_BLACKLIST
+
     def _build_game_stubs(self) -> dict:
         """
-        Create a dict of stub module objects for every module in the game's
-        module registry.  Injected into sys.modules before probing mod imports.
+        Create stub module objects for every Sims 4 game module.
+        NEVER overrides stdlib or C-extension modules — those must remain
+        real so zipfile, pathlib, etc. keep working inside _probe_script.
         Returns the original sys.modules snapshot for cleanup.
         """
         class StubAttr:
@@ -453,14 +485,26 @@ class BootEngine:
         if not self.game_index.modules:
             return saved
 
+        blacklist = self._get_stub_blacklist()
+        stubbed = 0
+
         for mod_name in self.game_index.modules:
-            if mod_name not in sys.modules:
-                stub = types.ModuleType(mod_name)
-                stub.__path__ = []  # mark as package
-                stub.__spec__ = None
-                # Attach a fallback attribute getter
-                stub.__getattr__ = lambda name, _m=mod_name: StubAttr(f"{_m}.{name}")
-                sys.modules[mod_name] = stub
+            # Never shadow already-loaded modules
+            if mod_name in sys.modules:
+                continue
+            # Never shadow stdlib or C extensions
+            root = mod_name.split(".")[0]
+            if root in blacklist or mod_name in blacklist:
+                continue
+            stub = types.ModuleType(mod_name)
+            stub.__path__ = []
+            stub.__spec__ = None
+            stub.__getattr__ = lambda name, _m=mod_name: StubAttr(f"{_m}.{name}")
+            sys.modules[mod_name] = stub
+            stubbed += 1
+
+        self._emit("IMPORT PROBE", 0.0,
+                   f"Installed {stubbed:,} game module stubs (preserved {len(blacklist)} stdlib modules)")
         return saved
 
     def _restore_stubs(self, saved: dict) -> None:
