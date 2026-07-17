@@ -727,12 +727,41 @@ class BootEngine:
         crit = self.report.critical_count
         warn = self.report.warning_count
 
-        # Crash probability scoring
-        # Each critical issue adds ~15%, warnings ~3%, capped at 99%
-        prob = min(99, (crit * 15) + (warn * 3))
-        # Add extra weight for depth violations
+        # ── Crash probability scoring ──────────────────────────────────────
+        # CRITICAL (broken APIs, bad injection, corrupt ZIPs): 20% each
+        crit_prob = min(99, crit * 20)
+
+        # Tuning/import warnings are genuinely dangerous: 10% each, cap 40%
+        dangerous_warns = sum(
+            1 for i in self.report.all_issues
+            if i.severity == SEV_WARNING
+            and i.phase in ("IMPORT PROBE", "TUNING MERGE")
+        )
+        script_prob = min(40, dangerous_warns * 10)
+
+        # Resource conflicts (RESOURCE LOAD warnings): normal mod stacking.
+        # Many mods = many conflicts — not linearly dangerous.
+        # Use a logarithmic scale so 25k conflicts ≠ 99%.
+        resource_warns = warn - dangerous_warns
+        import math
+        if resource_warns <= 0:
+            conflict_prob = 0
+        elif resource_warns < 50:
+            conflict_prob = 5
+        elif resource_warns < 500:
+            conflict_prob = 15
+        elif resource_warns < 5000:
+            conflict_prob = 25
+        else:
+            # Heavy conflict load but still manageable
+            conflict_prob = min(35, 25 + int(math.log10(resource_warns / 5000 + 1) * 10))
+
+        prob = min(99, crit_prob + script_prob + conflict_prob)
+
+        # Depth violations: CC that simply won't load
         if self.report.total_depth_violations > 0:
             prob = min(99, prob + 5)
+
         self.report.crash_probability = prob
 
         self._emit(ph, 0.5,
