@@ -144,6 +144,41 @@ def run(open_html: bool = True):
                 val = f"{v:,}" if isinstance(v, int) else str(v)
                 print(f"  {ph.name}/{k:<32}: {val}")
 
+    # ── Duplicate CC files ───────────────────────────────────────────────────
+    if report.dup_file_pairs:
+        near_dups  = [d for d in report.dup_file_pairs if d.is_near_duplicate]
+        minor_dups = [d for d in report.dup_file_pairs if not d.is_near_duplicate]
+        print(f"\n{SEP}")
+        print(f"  DUPLICATE CC FILES  ({len(report.dup_file_pairs)} pairs, "
+              f"{len(near_dups)} near-exact)")
+        print(SEP)
+        print(f"  Near-exact (≥50 shared IDs): same CC installed twice — quarantine the REMOVE file.")
+        print(f"  Minor overlap (<50 shared IDs): different CC packs sharing a few resources.")
+
+        if near_dups:
+            print(f"\n  NEAR-EXACT DUPLICATES — top {min(20, len(near_dups))} of {len(near_dups)}:")
+            print(f"  {'#':<4} {'Shared':>7}  {'Type':<18}  {'Date':^10}  Action")
+            print(f"  {'-'*4} {'-'*7}  {'-'*18}  {'-'*10}  {'-'*50}")
+            for rank, dup in enumerate(near_dups[:20], 1):
+                remove_name = Path(dup.remove_path).name
+                keep_name   = dup.name_a if dup.remove_path == dup.file_b else dup.name_b
+                date_str    = f"{dup.date_a}/{dup.date_b}"
+                print(f"  {rank:<4} {dup.shared_ids:>7,}  {dup.dominant_type:<18}  {date_str:<10}  "
+                      f"REMOVE: {remove_name[:50]}")
+                print(f"       KEEP:   {keep_name[:60]}")
+                print(f"       WHY:    {dup.recommendation}")
+                print()
+            if len(near_dups) > 20:
+                print(f"  ... {len(near_dups)-20} more in HTML report.")
+
+        if minor_dups:
+            print(f"\n  MINOR OVERLAPS — top {min(10, len(minor_dups))} of {len(minor_dups)}:")
+            print(f"  {'#':<4} {'Shared':>7}  {'Type':<18}  File A  vs  File B")
+            print(f"  {'-'*4} {'-'*7}  {'-'*18}  {'-'*60}")
+            for rank, dup in enumerate(minor_dups[:10], 1):
+                print(f"  {rank:<4} {dup.shared_ids:>7,}  {dup.dominant_type:<18}  "
+                      f"{dup.name_a[:28]}  vs  {dup.name_b[:28]}")
+
     # ── Save HTML + text logs ─────────────────────────────────────────────
     elapsed = (datetime.now() - ts_start).seconds
     label   = f"Scan duration: {elapsed//60}m {elapsed%60}s"

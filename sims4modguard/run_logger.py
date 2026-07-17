@@ -20,7 +20,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from .boot_engine import BootReport, BootIssue, PhaseResult
+from .boot_engine import BootReport, BootIssue, PhaseResult, DuplicateFilePair
 
 # ── Log directory ─────────────────────────────────────────────────────────────
 APP_DIR  = Path(__file__).parent.parent
@@ -238,6 +238,32 @@ _HTML_HEAD = """<!DOCTYPE html>
     margin: 12px 0;
   }}
 
+  .dup-table {{
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    margin: 8px 0;
+  }}
+  .dup-table th {{
+    color: var(--dim);
+    text-align: left;
+    padding: 4px 10px;
+    border-bottom: 1px solid #1a1a3a;
+    text-transform: uppercase;
+    font-size: 10px;
+  }}
+  .dup-table td {{
+    padding: 6px 10px;
+    border-bottom: 1px solid #0d0d20;
+    vertical-align: top;
+  }}
+  .dup-table tr:hover td {{ background: #0d0d28; }}
+  .dup-near {{ color: var(--red); font-weight: bold; }}
+  .dup-minor {{ color: var(--amber); }}
+  .dup-file {{ color: var(--cyan); word-break: break-all; }}
+  .dup-remove {{ color: var(--red); word-break: break-all; }}
+  .dup-rec {{ color: var(--dim); font-size: 10px; }}
+
   footer {{
     margin-top: 48px;
     color: var(--dim);
@@ -332,6 +358,10 @@ class RunLogger:
             parts.append(f"<a href='#warnings'>Warnings ({len(warnings)})</a>")
         if quarantined:
             parts.append(f"<a href='#quarantine'>Quarantined ({len(quarantined)})</a>")
+        if report.dup_file_pairs:
+            near = sum(1 for d in report.dup_file_pairs if d.is_near_duplicate)
+            parts.append(f"<a href='#duplicates'>Duplicates ({len(report.dup_file_pairs)}, "
+                         f"{near} near-exact)</a>")
         parts.append("<a href='#stats'>Stats</a>")
         parts.append("</div>")
 
@@ -410,6 +440,75 @@ class RunLogger:
   <div class='issue-why'>{_esc(why)}</div>
   {f"<div class='issue-fix'>{_esc(iss.fix)}</div>" if iss.fix else ""}
 </div>""")
+
+        # Duplicate CC file pairs
+        if report.dup_file_pairs:
+            near_dups = [d for d in report.dup_file_pairs if d.is_near_duplicate]
+            all_dups  = report.dup_file_pairs
+            parts.append(f"<h2 id='duplicates' style='color:var(--pink)'>"
+                         f"📦 Duplicate CC Files — {len(all_dups)} conflicting pairs "
+                         f"({len(near_dups)} near-exact)</h2>")
+            parts.append(
+                "<p style='color:var(--dim);font-size:11px;margin-bottom:8px'>"
+                "These file pairs share large numbers of the same resource IDs, "
+                "meaning the same CC content is installed twice. "
+                "The <strong style='color:var(--red)'>REMOVE</strong> column shows "
+                "which file to quarantine (older or smaller). "
+                "The game loads whichever is alphabetically last, so duplicates "
+                "waste load time without adding content."
+                "</p>")
+
+            # Near-duplicate table (50+ shared IDs)
+            if near_dups:
+                parts.append(f"<h3>Near-Exact Duplicates ({len(near_dups)}) "
+                             f"— same CC installed twice</h3>")
+                parts.append("<table class='dup-table'>")
+                parts.append("<tr><th>#</th><th>Keep (File A)</th>"
+                             "<th>Remove (File B)</th>"
+                             "<th>Shared IDs</th><th>Type</th>"
+                             "<th>Size A / Size B</th>"
+                             "<th>Date A / Date B</th></tr>")
+                for rank, dup in enumerate(near_dups[:100], 1):
+                    parts.append(
+                        f"<tr>"
+                        f"<td style='color:var(--dim)'>{rank}</td>"
+                        f"<td class='dup-file'>{_esc(dup.name_a)}</td>"
+                        f"<td class='dup-remove'>⛔ {_esc(dup.name_b)}</td>"
+                        f"<td class='dup-near'>{dup.shared_ids:,}</td>"
+                        f"<td style='color:var(--dim)'>{_esc(dup.dominant_type)}</td>"
+                        f"<td style='color:var(--dim)'>{dup.size_a_kb:,} KB / {dup.size_b_kb:,} KB</td>"
+                        f"<td style='color:var(--dim)'>{dup.date_a} / {dup.date_b}</td>"
+                        f"</tr>"
+                        f"<tr><td></td><td colspan='6' class='dup-rec'>"
+                        f"Recommendation: {_esc(dup.recommendation)}</td></tr>"
+                    )
+                if len(near_dups) > 100:
+                    parts.append(f"<tr><td colspan='7' style='color:var(--dim)'>"
+                                 f"... and {len(near_dups)-100} more near-exact duplicates</td></tr>")
+                parts.append("</table>")
+
+            # Minor overlap table (< 50 shared IDs)
+            minor_dups = [d for d in all_dups if not d.is_near_duplicate]
+            if minor_dups:
+                parts.append(f"<h3>Minor Overlaps ({len(minor_dups)}) "
+                             f"— partial shared resources</h3>")
+                parts.append("<table class='dup-table'>")
+                parts.append("<tr><th>#</th><th>File A</th><th>File B</th>"
+                             "<th>Shared IDs</th><th>Type</th></tr>")
+                for rank, dup in enumerate(minor_dups[:50], 1):
+                    parts.append(
+                        f"<tr>"
+                        f"<td style='color:var(--dim)'>{rank}</td>"
+                        f"<td class='dup-file'>{_esc(dup.name_a)}</td>"
+                        f"<td class='dup-file'>{_esc(dup.name_b)}</td>"
+                        f"<td class='dup-minor'>{dup.shared_ids:,}</td>"
+                        f"<td style='color:var(--dim)'>{_esc(dup.dominant_type)}</td>"
+                        f"</tr>"
+                    )
+                if len(minor_dups) > 50:
+                    parts.append(f"<tr><td colspan='5' style='color:var(--dim)'>"
+                                 f"... and {len(minor_dups)-50} more minor overlaps</td></tr>")
+                parts.append("</table>")
 
         # Quarantined files
         if quarantined:
@@ -528,6 +627,40 @@ class RunLogger:
         else:
             s("WARNINGS")
             lines.append("  ✓ None found.")
+
+        # Duplicate CC files section
+        if report.dup_file_pairs:
+            near_dups  = [d for d in report.dup_file_pairs if d.is_near_duplicate]
+            minor_dups = [d for d in report.dup_file_pairs if not d.is_near_duplicate]
+            s(f"DUPLICATE CC FILES ({len(report.dup_file_pairs)} pairs, "
+              f"{len(near_dups)} near-exact)")
+            lines.append("  Near-exact duplicates: same CC installed twice. Remove the older file.")
+            lines.append("  Minor overlaps: partial shared IDs between different CC sets.")
+            lines.append("")
+
+            if near_dups:
+                lines.append(f"  NEAR-EXACT DUPLICATES ({len(near_dups)}) — 50+ shared IDs:")
+                lines.append(f"  {'#':<4} {'Shared':>7}  {'Type':<18}  Remove (quarantine this file)")
+                lines.append(f"  {'─'*4} {'─'*7}  {'─'*18}  {'─'*40}")
+                for rank, dup in enumerate(near_dups[:50], 1):
+                    keep = dup.name_a if dup.remove_path == dup.file_b else dup.name_b
+                    remove = Path(dup.remove_path).name
+                    lines.append(f"  {rank:<4} {dup.shared_ids:>7,}  {dup.dominant_type:<18}  {remove}")
+                    lines.append(f"       Keep: {keep}")
+                    lines.append(f"       {dup.recommendation}")
+                    lines.append("")
+                if len(near_dups) > 50:
+                    lines.append(f"  ... and {len(near_dups)-50} more near-exact pairs (see HTML report)")
+
+            if minor_dups:
+                lines.append(f"\n  MINOR OVERLAPS ({len(minor_dups)}) — <50 shared IDs:")
+                lines.append(f"  {'#':<4} {'Shared':>7}  {'Type':<18}  File A  vs  File B")
+                lines.append(f"  {'─'*4} {'─'*7}  {'─'*18}  {'─'*50}")
+                for rank, dup in enumerate(minor_dups[:20], 1):
+                    lines.append(f"  {rank:<4} {dup.shared_ids:>7,}  {dup.dominant_type:<18}  "
+                                 f"{dup.name_a[:25]}  vs  {dup.name_b[:25]}")
+                if len(minor_dups) > 20:
+                    lines.append(f"  ... and {len(minor_dups)-20} more (see HTML report)")
 
         if quarantined:
             s(f"QUARANTINED THIS RUN ({len(quarantined)} files)")

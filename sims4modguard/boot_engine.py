@@ -25,9 +25,12 @@ import struct
 import sys
 import types
 import zipfile
+from collections import defaultdict
 from dataclasses import dataclass, field
+from datetime import datetime
+from itertools import combinations
 from pathlib import Path
-from typing import Callable, Generator, List, Optional, Tuple
+from typing import Callable, Dict, Generator, List, Optional, Tuple
 
 from .known_patterns import (
     REMOVED_APIS, BROKEN_INJECT_PATTERNS, WW_DEPENDENCY_MARKERS,
@@ -86,6 +89,55 @@ class BootIssue:
 
 
 @dataclass
+class DuplicateFilePair:
+    """
+    Two mod packages that claim many of the same resource IDs.
+    Usually means the same CC is installed twice under different names.
+    """
+    file_a:          str   # full path — recommended to KEEP
+    file_b:          str   # full path — recommended to REMOVE
+    shared_ids:      int   # number of TypeID+InstanceID pairs shared
+    type_breakdown:  Dict[str, int]  # {resource_type_label: count}
+    size_a:          int   # bytes
+    size_b:          int   # bytes
+    mtime_a:         float # unix timestamp
+    mtime_b:         float # unix timestamp
+    is_near_duplicate: bool  # True when shared_ids >= 50
+    recommendation:  str   # human-readable action string
+    remove_path:     str   # which file to quarantine
+
+    @property
+    def name_a(self) -> str:
+        return Path(self.file_a).name
+
+    @property
+    def name_b(self) -> str:
+        return Path(self.file_b).name
+
+    @property
+    def size_a_kb(self) -> int:
+        return self.size_a // 1024
+
+    @property
+    def size_b_kb(self) -> int:
+        return self.size_b // 1024
+
+    @property
+    def date_a(self) -> str:
+        return datetime.fromtimestamp(self.mtime_a).strftime("%Y-%m-%d") if self.mtime_a else "?"
+
+    @property
+    def date_b(self) -> str:
+        return datetime.fromtimestamp(self.mtime_b).strftime("%Y-%m-%d") if self.mtime_b else "?"
+
+    @property
+    def dominant_type(self) -> str:
+        if not self.type_breakdown:
+            return "Unknown"
+        return max(self.type_breakdown, key=self.type_breakdown.get)
+
+
+@dataclass
 class PhaseResult:
     name:    str
     status:  str = "PENDING"   # PASS / WARN / FAIL / SKIP / PENDING
@@ -102,8 +154,9 @@ class BootReport:
     total_packages:   int = 0
     total_depth_violations: int = 0
     crash_probability: int = 0      # 0-100
-    phases:           List[PhaseResult] = field(default_factory=list)
-    all_issues:       List[BootIssue]  = field(default_factory=list)
+    phases:           List[PhaseResult]       = field(default_factory=list)
+    all_issues:       List[BootIssue]         = field(default_factory=list)
+    dup_file_pairs:   List[DuplicateFilePair] = field(default_factory=list)
 
     @property
     def critical_count(self) -> int:
@@ -376,9 +429,12 @@ class BootEngine:
         )
         self._mod_resource_index = mod_index
 
-        # Detect multi-mod conflicts (two+ mods claim same resource)
+        # ── Pass 1: detect conflicts and overrides ────────────────────────────
         multi_conflicts: list[tuple] = []
         base_overrides:  list[tuple] = []
+        # pair_map: (file_a, file_b) -> {"types": {label: count}, "count": int}
+        pair_map: dict[tuple, dict] = defaultdict(
+            lambda: {"types": defaultdict(int), "count": 0})
 
         total_res = len(mod_index)
         for idx, ((tid, iid), paths) in enumerate(mod_index.items()):
@@ -387,41 +443,102 @@ class BootEngine:
                            f"  Checking resource conflicts [{idx:,}/{total_res:,}] ...")
 
             if len(paths) > 1:
-                # Same TypeID+InstanceID in multiple mods → conflict
                 multi_conflicts.append((tid, iid, paths))
                 type_label = RESOURCE_TYPE_LABELS.get(tid, f"TypeID 0x{tid:08X}")
                 names = [Path(p).name for p in paths[:3]]
                 i = self._issue(ph, SEV_WARNING,
                                 ", ".join(names),
                                 f"Resource conflict: {type_label} 0x{iid:016X}",
-                                f"{len(paths)} mods claim the same ID. Last loaded wins — behavior undefined.",
+                                f"{len(paths)} mods claim the same ID. Last loaded wins.",
                                 "Keep only one mod that modifies this resource.")
                 result.issues.append(i)
 
-            # Check if mod overrides a base-game resource
+                # Build file-pair conflict map — cap at 5 paths to avoid
+                # combinatorial explosion when many files share one ID
+                unique_paths = sorted(set(paths))[:5]
+                for p_a, p_b in combinations(unique_paths, 2):
+                    entry = pair_map[(p_a, p_b)]
+                    entry["types"][type_label] += 1
+                    entry["count"] += 1
+
             if self.game_index.is_base_game_resource(tid, iid):
                 src = self.game_index.get_resource_source(tid, iid)
                 base_overrides.append((tid, iid, paths[0], src))
-                # Only flag if truly overriding tuning (not CAS which is expected)
-                if tid not in {0x034AEECB}:  # skip CAS parts (expected to override)
+                if tid not in {0x034AEECB}:
                     type_label = RESOURCE_TYPE_LABELS.get(tid, f"TypeID 0x{tid:08X}")
                     i = self._issue(ph, SEV_INFO,
                                     Path(paths[0]).name,
                                     f"Overrides base-game {type_label}",
-                                    f"Source: {src}. This is intentional for gameplay mods, "
-                                    f"but breaks if EA changes this resource in a patch.",
+                                    f"Source: {src}. Intentional for gameplay mods but "
+                                    f"breaks if EA changes this resource in a patch.",
                                     "Check mod is updated for patch 1.121.")
                     result.issues.append(i)
 
+        # ── Pass 2: rank file pairs and build DuplicateFilePair list ─────────
+        self._emit(ph, 0.95, f"Analysing {len(pair_map):,} conflicting file pairs ...")
+        dup_pairs: list[DuplicateFilePair] = []
+
+        sorted_pairs = sorted(pair_map.items(),
+                              key=lambda x: -x[1]["count"])[:200]  # top 200
+
+        for (p_a, p_b), data in sorted_pairs:
+            shared = data["count"]
+            type_breakdown = dict(data["types"])
+
+            # Gather file metadata
+            try:
+                st_a = Path(p_a).stat()
+                size_a, mtime_a = st_a.st_size, st_a.st_mtime
+            except OSError:
+                size_a, mtime_a = 0, 0.0
+            try:
+                st_b = Path(p_b).stat()
+                size_b, mtime_b = st_b.st_size, st_b.st_mtime
+            except OSError:
+                size_b, mtime_b = 0, 0.0
+
+            # Recommendation: keep the newer (or larger if same age)
+            if mtime_a > mtime_b:
+                rec = f"Remove B — older by {(mtime_a - mtime_b)/86400:.0f} day(s)"
+                remove_path = p_b
+            elif mtime_b > mtime_a:
+                rec = f"Remove A — older by {(mtime_b - mtime_a)/86400:.0f} day(s)"
+                remove_path = p_a
+            elif size_a >= size_b:
+                rec = "Remove B — same age, A is larger (more complete)"
+                remove_path = p_b
+            else:
+                rec = "Remove A — same age, B is larger (more complete)"
+                remove_path = p_a
+
+            dup_pairs.append(DuplicateFilePair(
+                file_a=p_a,
+                file_b=p_b,
+                shared_ids=shared,
+                type_breakdown=type_breakdown,
+                size_a=size_a,
+                size_b=size_b,
+                mtime_a=mtime_a,
+                mtime_b=mtime_b,
+                is_near_duplicate=(shared >= 50),
+                recommendation=rec,
+                remove_path=remove_path,
+            ))
+
+        self.report.dup_file_pairs = dup_pairs
+        near_dups = sum(1 for d in dup_pairs if d.is_near_duplicate)
+
         result.stats = {
-            "total_mod_resources": total_res,
-            "multi_conflicts":     len(multi_conflicts),
-            "base_overrides":      len(base_overrides),
+            "total_mod_resources":   total_res,
+            "multi_conflicts":       len(multi_conflicts),
+            "base_overrides":        len(base_overrides),
+            "duplicate_file_pairs":  len(dup_pairs),
+            "near_duplicates":       near_dups,
         }
         self._emit(ph, 1.0,
                    f"Resource scan: {total_res:,} resources, "
-                   f"{len(multi_conflicts)} conflicts, "
-                   f"{len(base_overrides)} base-game overrides",
+                   f"{len(multi_conflicts):,} conflicts, "
+                   f"{near_dups} near-duplicate file pairs",
                    SEV_WARNING if multi_conflicts else SEV_OK)
         result.status = "WARN" if multi_conflicts else "PASS"
         return result

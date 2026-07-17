@@ -2202,6 +2202,10 @@ github.com/HuciferX/Sims4ModGuard
                        command=self._boot_quarantine_critical,
                        color=NEON_RED, height=36).pack(fill="x", padx=8, pady=(4, 8))
 
+        # ── Duplicate CC files panel ─────────────────────────────────────────
+        if report.dup_file_pairs:
+            self._show_dup_panel(report)
+
         # Log final summary
         self._boot_console.append("-" * 55, "dim")
         self._boot_console.append(f"SIMULATION COMPLETE: {report.verdict_label}", "bold")
@@ -2234,6 +2238,137 @@ github.com/HuciferX/Sims4ModGuard
             self._last_report_path = html_path
         except Exception as e:
             self._boot_console.append(f"(Log save failed: {e})", "warning")
+
+    def _show_dup_panel(self, report):
+        """Render the duplicate CC file list below the verdict in the boot sim tab."""
+        # Container (reuse or create inside phase panel)
+        phase_panel = None
+        for child in self._boot_verdict_frame.master.winfo_children():
+            if hasattr(child, '_is_dup_panel'):
+                child.destroy()
+                break
+
+        near_dups = [d for d in report.dup_file_pairs if d.is_near_duplicate]
+        all_dups  = report.dup_file_pairs
+
+        dup_frame = ctk.CTkFrame(self._boot_verdict_frame.master,
+                                  fg_color=BG_CARD,
+                                  border_color=NEON_PINK, border_width=1,
+                                  corner_radius=6)
+        dup_frame._is_dup_panel = True
+        dup_frame.pack(fill="x", padx=8, pady=(4, 8))
+
+        # Header row
+        hdr = ctk.CTkFrame(dup_frame, fg_color=BG_HEADER)
+        hdr.pack(fill="x")
+        ctk.CTkLabel(hdr,
+                     text=f"  DUPLICATE CC FILES  —  {len(near_dups)} near-exact  |  "
+                          f"{len(all_dups) - len(near_dups)} minor overlaps",
+                     font=("Courier New", 10, "bold"),
+                     text_color=NEON_PINK).pack(side="left", padx=8, pady=6)
+        NeonButton(hdr, "QUARANTINE NEAR-EXACT",
+                   command=lambda r=report: self._quarantine_near_dups(r),
+                   color=NEON_PINK, height=30, width=210).pack(
+                       side="right", padx=8, pady=4)
+
+        ctk.CTkLabel(dup_frame,
+                     text="  Two files share the same resource IDs = same CC installed twice."
+                          "  The REMOVE column = older/smaller file to quarantine.",
+                     font=FONT_SMALL, text_color=TEXT_DIM).pack(
+                         anchor="w", padx=8, pady=(4, 0))
+
+        # Column headers
+        col_hdr = ctk.CTkFrame(dup_frame, fg_color="#0d0d22")
+        col_hdr.pack(fill="x", padx=4, pady=(4, 0))
+        for col_text, col_w in [
+            ("#",         4), ("Shared", 8), ("Type",    16),
+            ("KEEP",     30), ("REMOVE", 30),
+        ]:
+            ctk.CTkLabel(col_hdr, text=col_text,
+                         font=("Courier New", 8, "bold"),
+                         text_color=TEXT_DIM,
+                         width=col_w * 7, anchor="w").pack(side="left", padx=4, pady=2)
+
+        # Scrollable list (show top 40)
+        scroll = ctk.CTkScrollableFrame(dup_frame, fg_color=BG_DEEP,
+                                        height=220,
+                                        scrollbar_button_color="#2a001a")
+        scroll.pack(fill="x", padx=4, pady=(0, 8))
+
+        display = (near_dups[:40] if near_dups
+                   else [d for d in all_dups if not d.is_near_duplicate][:40])
+
+        for rank, dup in enumerate(display, 1):
+            row = ctk.CTkFrame(scroll, fg_color=BG_CARD if rank % 2 == 0 else "transparent",
+                               corner_radius=2)
+            row.pack(fill="x", padx=2, pady=1)
+
+            name_color = NEON_RED if dup.is_near_duplicate else NEON_AMBER
+            keep_name   = dup.name_a if dup.remove_path == dup.file_b else dup.name_b
+            remove_name = Path(dup.remove_path).name
+
+            ctk.CTkLabel(row, text=str(rank),
+                         font=FONT_SMALL, text_color=TEXT_DIM,
+                         width=28).pack(side="left", padx=4, pady=3)
+            ctk.CTkLabel(row, text=f"{dup.shared_ids:,}",
+                         font=("Courier New", 9, "bold"),
+                         text_color=name_color,
+                         width=56).pack(side="left")
+            ctk.CTkLabel(row, text=dup.dominant_type[:16],
+                         font=FONT_SMALL, text_color=TEXT_DIM,
+                         width=112).pack(side="left")
+            ctk.CTkLabel(row, text=keep_name[:36],
+                         font=FONT_SMALL, text_color=NEON_GREEN,
+                         anchor="w").pack(side="left", padx=4, fill="x", expand=True)
+            ctk.CTkLabel(row, text=f"⛔ {remove_name[:36]}",
+                         font=FONT_SMALL, text_color=NEON_RED,
+                         anchor="w").pack(side="left", padx=4)
+
+        if len(all_dups) > 40:
+            ctk.CTkLabel(dup_frame,
+                         text=f"  ... and {len(all_dups)-40} more pairs. Open HTML report for full list.",
+                         font=FONT_SMALL, text_color=TEXT_DIM).pack(
+                             anchor="w", padx=8, pady=(0, 4))
+
+    def _quarantine_near_dups(self, report):
+        """Quarantine the 'remove_path' file from every near-exact duplicate pair."""
+        if not self.qm:
+            messagebox.showwarning("No Folder", "Select a Sims 4 folder first.")
+            return
+        near_dups = [d for d in report.dup_file_pairs if d.is_near_duplicate]
+        if not near_dups:
+            messagebox.showinfo("None", "No near-exact duplicates to quarantine.")
+            return
+
+        # Deduplicate remove_paths
+        to_remove = list({d.remove_path for d in near_dups})
+        if not messagebox.askyesno(
+                "Quarantine Near-Exact Duplicates",
+                f"Safely quarantine {len(to_remove)} duplicate file(s)?\n\n"
+                f"These contain the same CC as another file already in your Mods folder.\n"
+                f"Files are NEVER deleted — restore any time from Fix & Repair."):
+            return
+
+        self._boot_console.append("-" * 50, "dim")
+        self._boot_console.append(f"Quarantining {len(to_remove)} near-duplicate files...", "warning")
+        moved = 0
+        for path_str in to_remove:
+            p = Path(path_str)
+            if p.exists():
+                if self.qm.quarantine(p, "Near-exact duplicate CC — same content as another package",
+                                       auto=True):
+                    moved += 1
+                    self._boot_console.append(f"  ⛔ {p.name}", "warning")
+            else:
+                self._boot_console.append(f"  (not found) {p.name}", "dim")
+
+        self._clear_cache_silent()
+        self._boot_console.append(
+            f"Done. {moved} files quarantined. Caches cleared.", "ok")
+        self._status(f"* {moved} duplicate CC files quarantined")
+        messagebox.showinfo("Done",
+            f"{moved} of {len(to_remove)} duplicate files quarantined.\n"
+            "Caches cleared. You can launch the game now.")
 
     def _open_last_report(self):
         """Open the most recent HTML audit report in the default browser."""
