@@ -118,13 +118,14 @@ STATE_CONFIGS = {
     "PENDING":  {"color": "#2a2a4a", "glyph": None,  "glow": 0.0,  "fill": 0.0,  "border": "#1a1a3a"},
     "ACTIVE":   {"color": None,       "glyph": None,  "glow": 0.8,  "fill": 0.18, "border": None,     "pulse": True},
     "RUNNING":  {"color": "#ffaa00",  "glyph": None,  "glow": 0.4,  "fill": 0.10, "border": "#ffaa00", "spin": True},
-    "DONE":     {"color": "#00ff9f",  "glyph": "✓",   "glow": 0.4,  "fill": 0.18, "border": "#00ff9f"},
-    "WARNING":  {"color": "#ffaa00",  "glyph": "⚠",   "glow": 0.3,  "fill": 0.12, "border": "#ffaa00"},
-    "CRITICAL": {"color": "#ff003c",  "glyph": "✗",   "glow": 0.6,  "fill": 0.18, "border": "#ff003c"},
-    "COMPLETE": {"color": "#00ff9f",  "glyph": "✓",   "glow": 0.4,  "fill": 0.18, "border": "#00ff9f"},
+    "DONE":     {"color": "#00ff9f",  "glyph": "OK",  "glow": 0.4,  "fill": 0.18, "border": "#00ff9f"},
+    "WARNING":  {"color": "#ffaa00",  "glyph": "!",   "glow": 0.3,  "fill": 0.12, "border": "#ffaa00"},
+    "CRITICAL": {"color": "#ff003c",  "glyph": "X",   "glow": 0.6,  "fill": 0.18, "border": "#ff003c"},
+    "COMPLETE": {"color": "#00ff9f",  "glyph": "OK",  "glow": 0.4,  "fill": 0.18, "border": "#00ff9f"},
 }
 
-SPIN_CHARS = ["◜ ", " ◝", " ◞", "◟ ", "◠ ", " ◡", " ◢", "◣ "]
+# No longer used - spin is drawn as an arc
+SPIN_CHARS: list = []
 
 
 # ── StepIndicator widget ──────────────────────────────────────────────────────
@@ -176,7 +177,8 @@ class StepIndicator(tk.Canvas):
         if self._state == "ACTIVE":
             self._phase = (self._phase + 0.10) % (2 * math.pi)
         elif self._state == "RUNNING":
-            self._spin = (self._spin + 1) % len(SPIN_CHARS)
+            # Spin angle: 0→360 over 16 frames
+            self._spin = (self._spin + 1) % 16
         self._draw()
         try:
             self.after(40, self._animate)
@@ -196,6 +198,11 @@ class StepIndicator(tk.Canvas):
         cfg   = STATE_CONFIGS.get(self._state, STATE_CONFIGS["PENDING"])
         color = cfg["color"] or self._color
 
+        # RUNNING state: use canvas arc (Pillow can't easily animate arcs)
+        if cfg.get("spin"):
+            self._draw_canvas()
+            return
+
         # Compute current glow intensity
         base_glow = cfg["glow"]
         if cfg.get("pulse"):
@@ -204,9 +211,7 @@ class StepIndicator(tk.Canvas):
             glow = base_glow
 
         # Glyph text
-        if cfg.get("spin"):
-            glyph = SPIN_CHARS[self._spin]
-        elif cfg.get("glyph"):
+        if cfg.get("glyph"):
             glyph = cfg["glyph"]
         else:
             glyph = self._num
@@ -237,6 +242,21 @@ class StepIndicator(tk.Canvas):
                              font=("Courier New", 15))
             return
 
+        if cfg.get("spin"):
+            # RUNNING: rotating arc + dim background circle
+            # Arc sweeps 270 degrees, start angle rotates each frame
+            start_angle = self._spin * (360 / 16)
+            self.create_oval(cx-r, cy-r, cx+r, cy+r,
+                             fill=_mix("#ffaa00", BG, 0.05),
+                             outline="#3a2800", width=1)
+            self.create_arc(cx-r, cy-r, cx+r, cy+r,
+                            start=start_angle, extent=270,
+                            style="arc", outline="#ffaa00", width=3)
+            # Small center dot
+            self.create_oval(cx-4, cy-4, cx+4, cy+4,
+                             fill="#ffaa00", outline="")
+            return
+
         # Glow rings (simulated via concentric ovals blended toward BG)
         glow = cfg["glow"]
         if cfg.get("pulse"):
@@ -252,15 +272,10 @@ class StepIndicator(tk.Canvas):
         self.create_oval(cx-r, cy-r, cx+r, cy+r,
                          fill=fill_c, outline=color, width=2)
 
-        # Glyph
-        if cfg.get("spin"):
-            text = SPIN_CHARS[self._spin]
-        elif cfg.get("glyph"):
-            text = cfg["glyph"]
-        else:
-            text = self._num
+        # Glyph (ASCII-safe: OK / ! / X / step number)
+        text = cfg.get("glyph") or self._num
         self.create_text(cx, cy, text=text, fill=color,
-                         font=("Courier New", 17, "bold"))
+                         font=("Courier New", 14, "bold"))
 
 
 # ── Connector line ────────────────────────────────────────────────────────────

@@ -1,170 +1,135 @@
-# 🦉 Sims4ModGuard
-> **31 / 31 tests passing** &nbsp;|&nbsp; Python 3.10+ &nbsp;|&nbsp; Windows &nbsp;|&nbsp; Patch 1.121+
+﻿# 🦉 Sims4ModGuard
+### The Sims 4 Mod Fixer — fix crashes before you boot. No more hour-long loads that end in a crash.
 
-> **The ultimate Sims 4 mod compatibility scanner, CC cleaner, and repair tool.**  
-> Built by **Hucifer** & **🦉 Hypatia** — cyberpunk-style, hacker-grade, community-free.
-
-![Platform](https://img.shields.io/badge/Platform-Windows-blue?style=flat-square)
-![Python](https://img.shields.io/badge/Python-3.10%2B-brightgreen?style=flat-square)
-![License](https://img.shields.io/badge/License-MIT-purple?style=flat-square)
+![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-blue?style=flat-square)
+![No Python Needed](https://img.shields.io/badge/Python-NOT%20required-brightgreen?style=flat-square)
 ![Game](https://img.shields.io/badge/Sims%204-Patch%201.121%2B-ff69b4?style=flat-square)
+![Free](https://img.shields.io/badge/Cost-Free%20Forever-purple?style=flat-square)
+
+> Built by **Hucifer** & **🦉 Hypatia** — free forever, open source, community edition.
 
 ---
 
-## 🚨 What Is This?
+## ⬇️ Download — No Installation, No Python, No Setup
 
-Every Sims 4 patch breaks mods. The community spends hours hunting broken scripts, corrupt CC packages, and injection-pattern crashes. **Sims4ModGuard** automates all of that.
+### ➡️ [CLICK HERE TO DOWNLOAD Sims4ModGuard.exe](../../releases/latest)
 
-It's a full **cyberpunk hacker dashboard** that:
-- Scans every `.ts4script` ZIP for broken injection patterns
-- Detects outdated mods that crash on Patch 1.121+
-- Validates CC packages (`.package`) for DBPF corruption
-- Finds duplicates, tiny-file junk, and tuning conflicts
-- Parses your `lastException.txt` into plain English
-- Quarantines broken files safely (with one-click restore)
-- Clears game caches automatically
+1. Click the link above → go to the **Releases** page
+2. Download **Sims4ModGuard.exe** under "Assets"
+3. Double-click it to run — that's all
+
+> **Windows Defender warning?** Click **"More info"** → **"Run anyway"**
+> This is normal for unsigned apps. The code is fully open-source — you can read every line right here.
 
 ---
 
-## ✨ Features
+## 🎮 What Does This Do?
 
-| Feature | Description |
-|--------|-------------|
-| 🔍 **Script Scanner** | Detects `inject_load_data_into_class_instances`, `HasTunableReference`, `add_super_affordances`, `lmsinjector`, and 10+ other broken patterns |
-| 🧹 **CC Cleaner** | Validates DBPF headers, finds duplicates by name and MD5 hash, flags corrupt or empty packages |
-| 📋 **Log Analyzer** | Parses `lastException.txt` XML into grouped, human-readable errors with mod name attribution |
-| 🔧 **Fix & Repair** | One-click quarantine of bad files with a JSON restore manifest |
-| 🗑️ **Cache Cleaner** | Auto-detects your Sims 4 folder and clears localthumbcache and script/slot caches |
-| 🛡️ **Smart Whitelist** | Known-good mods (MCCC, Basemental, BetterExceptions, XmlInjector) are never flagged |
-| 🚀 **Auto-Update URLs** | Embedded links to official update pages for top community mods |
+You have thousands of mods. Every time EA updates Sims 4, some mods break — but you don't find out until you've waited an hour for the game to load and then it crashes.
+
+**Sims4ModGuard fixes that.** It simulates what the game does when it boots — *without* actually launching the game.  
+It takes 10–30 minutes to scan, not an hour, and tells you **exactly which mods will crash the game before you waste your time.**
 
 ---
 
-## 📖 How It Works — Step by Step
+## 🪄 The 6-Step Wizard (Just Click Next)
 
-### Step 1 — Open the App
-Double-click `Sims4ModGuard.exe`. The app opens in a cyberpunk dashboard interface and **auto-detects your Sims 4 folder** (usually `Documents/Electronic Arts/The Sims 4`). You'll see your stats load instantly at the top:
-- **GAME VERSION** — what patch you're on
-- **SCRIPTS** — how many .ts4script mods you have
-- **PACKAGES** — how many .package CC files
-- **QUARANTINED** — files you've previously disabled
-- **ISSUES FOUND** — updates live after each scan
+When you open the app, you'll see the **WIZARD** tab. Follow the steps in order:
 
-If the folder isn't detected, click **BROWSE** to point it at your Sims 4 data folder.
+| # | Step | What It Does | Time |
+|---|------|-------------|------|
+| 1 | **Detect Folders** | Finds your Mods folder and game installation | Instant |
+| 2 | **Index Game Files** | Reads the real game's 3,500+ Python modules to check your mods against | ~45 sec (cached after) |
+| 3 | **Simulate Boot** | Runs all 7 phases of what the game does when it loads — without launching | 10–30 min |
+| 4 | **Fix Issues** | Moves broken mods out (safely — you can restore them any time) | Instant |
+| 5 | **Clear Caches** | Deletes the thumbnail cache (required after any mod change or the game crashes on loading) | Instant |
+| 6 | **Check Save File** | Scans your save for broken mod references, can generate a clean copy | 2–5 min |
 
----
-
-### Step 2 — Scan Your Script Mods (`[>>] SCAN SCRIPTS` tab)
-
-Click **>> SCAN SCRIPTS**. The scanner reads every `.ts4script` file in your Mods folder and looks inside the ZIP for broken Python patterns.
-
-It catches:
-| Pattern | What it means |
-|---------|---------------|
-| `inject_load_data_into_class_instances` | EA removed this API. Mod crashes on launch. |
-| `HasTunableReference` | Tunable reference system changed. Mod is dead. |
-| `add_super_affordances` | Affordance injection removed. Mod broken. |
-| `lmsinjector` | Scumbumbo's injector, no longer compatible. |
-| `add_wicked_attributes` | Mod depends on WickedWhims (not installed). |
-| `leroi_death_injector` | LeRoi death system removed by EA. |
-
-Results appear color-coded:
-- 🔴 **CRITICAL** — this mod WILL crash your game, quarantine it
-- 🟡 **WARNING** — likely broken, needs attention
-- 🟢 **OK** — clean, no issues found
-
-Known-good mods (MCCC, Basemental, BetterExceptions, XmlInjector) are **whitelisted** and never flagged.
+After step 5 you'll see a **CC Health Grade (A–F)** and a **Launch Game** button.
 
 ---
 
-### Step 3 — Quarantine Broken Scripts
+## 🔍 What Gets Checked
 
-After scanning, click **XX QUARANTINE ALL CRITICAL**. This **safely moves** every critical script from your Mods folder to a `MODS_DISABLED` folder. A JSON manifest records every move so you can restore files later.
+**Script mods (.ts4script)**
+- Checks for Python functions EA removed in recent patches
+- Checks that the mod can actually import (crashes before main menu if it can't)
+- Detects old injection patterns that no longer work
 
-> Your files are NEVER deleted — only moved. You can restore them any time from the `[WR] FIX & REPAIR` tab.
+**CC packages (.package)**
+- Finds the same CC installed twice (wasted load time + glitching)
+- Finds corrupt packages that silently fail to load
+- Finds mods overriding game data that changed in a patch
 
----
-
-### Step 4 — Scan CC Packages (`[##] CC CLEANER` tab)
-
-Click **## SCAN CC PACKAGES**. This inspects every `.package` file. CC is Sims 4's binary format (DBPF). The cleaner:
-1. **Checks the file header** — if it doesn't start with `DBPF`, the file is corrupt and won't load
-2. **Finds duplicates by filename** — same mod installed in two folders will cause conflicts
-3. **Finds exact duplicates by file hash** — identical files wasting space
-4. **Flags tuning conflicts** — multiple packages trying to override the same game file
-5. **Finds WickedWhims-dependent packages** — if you don't have WW installed
-
-Warning: scanning 10,000+ packages takes 2–5 minutes. The progress bar shows you where it's at.
+**Save files (.save)**
+- Finds orphaned references (mods you had when the save was made but have since removed)
+- Generates a clean save copy with broken references stripped out
 
 ---
 
-### Step 5 — Analyze Your Crash Log (`[!!] LOG ANALYZER` tab)
+## 🔒 Will It Delete My Files?
 
-Click **!! PARSE LAST EXCEPTION LOG**. The app reads your `lastException.txt` (the file the game writes when it crashes) and translates it from raw error XML into plain English:
+**No. Never.** The app only *moves* files, never deletes them.
 
-- **Was there a crash?** — checks if tuning finished loading
-- **How many errors?** — total count from the log
-- **Top root causes** — the most-repeated errors, sorted by frequency
-- **Which mod?** — traces errors back to specific script files where possible
-- **Plain English explanations** — "This mod uses an API that EA removed in patch 1.105"
+When a mod is "quarantined" it goes into a folder called `MODS_DISABLED` inside your Sims 4 folder.  
+You can restore any file any time from the **Fix & Repair** tab in the app.
 
 ---
 
-### Step 6 — Fix and Repair (`[WR] FIX & REPAIR` tab)
+## 📊 Example — Real Results on a 13,000-Mod Collection
 
-One-click actions:
-- **[!!] QUARANTINE ALL CRITICAL** — same as the Scan tab button
-- **[~~] CLEAR ALL CACHES** — deletes `localthumbcache.package` and slot/blueprint caches. Always do this after changing mods.
-- **[OK] RESTORE ALL QUARANTINED** — moves all quarantined files back to Mods
-- **[->] OPEN MODS FOLDER** — opens your Mods folder in Explorer
-- **[XX] REMOVE DUPLICATE PACKAGES** — quarantines older duplicates, keeping the newest
-- **[??] SHOW QUARANTINE MANIFEST** — lists every quarantined file with the reason it was moved
+| Found | Example | Action Taken |
+|-------|---------|--------------|
+| Near-exact duplicate CC | Basemental Drugs installed twice (6,386 shared IDs) | Kept newer, quarantined older |
+| Named duplicate | `NisaK_Wicked_Perversions_ROOTDUPE.package` | Quarantined |
+| Old version | `EllaNoir_August.package` + `EllaNoir_September.package` | Kept September, removed August |
+| Depth violation | CC buried 6+ subfolders deep | Flagged — game ignores it silently |
 
----
-
-### Step 7 — Clear Cache and Launch
-
-After making any changes, **always clear caches** before launching the game. Click **~~ CLEAR CACHE** on the Scan tab or **[~~] CLEAR ALL CACHES** on the Fix tab. The CACHE (MB) stat card will drop to 0.
-
-Then launch your game. If it still crashes, come back and check the LOG ANALYZER tab.
+The **One-Click Fix** button handles all of these automatically.
 
 ---
 
-## 🧪 Running Tests
+## 🔗 Known Mod Update Links
 
-```bash
-pip install pytest
-python -m pytest tests/ -v
-```
+The HTML report includes official update links for 40+ recognized mods. Examples:
 
-**31 tests** covering scanner detection, CC validation, log parsing, and quarantine/restore.
-
----
-
-## 🖥️ Screenshots
-
-> **Main Dashboard** — live stats, animated scanline header, neon cyberpunk theme  
-> **Scan Tab** — real-time script scanning with color-coded severity  
-> **CC Cleaner Tab** — duplicate detection with file sizes  
-> **Log Analyzer Tab** — parsed lastException output with per-mod breakdowns  
-> **Fix & Repair Tab** — quarantine manager with restore support  
+| Mod | Where to Get the Latest |
+|-----|--------------------------|
+| WickedWhims | [turbodriver.itch.io/wickedwhims](https://turbodriver.itch.io/wickedwhims) *(Free)* |
+| MCCC | [deaderpoolmc.tumblr.com](https://deaderpoolmc.tumblr.com/) *(Free)* |
+| Basemental Drugs | [basementalcc.com](https://basementalcc.com/adult_mods/basemental-drugs/) *(Free, age check)* |
+| LittleMsSam | [lms-mods.com](https://lms-mods.com/) *(Free)* |
+| XML Injector | [scumbumbomods.com](https://scumbumbomods.com/) *(Free)* |
+| Kuttoe mods | [kuttoe.itch.io](https://kuttoe.itch.io/) *(Free)* |
+| EllaNoir mods | [patreon.com/ellanoir](https://www.patreon.com/ellanoir) *(Patreon)* |
+| SCCOR | [srslysims.com](https://srslysims.com/) *(Free)* |
 
 ---
 
-## 📦 Download & Run (No Python Required)
+## ❓ FAQ
 
-1. Go to the [**Releases**](../../releases) page
-2. Download `Sims4ModGuard.exe`
-3. Double-click and run — no install needed
+**Q: Do I need Python?**  
+A: No. The `.exe` in Releases runs directly on Windows 10/11.
 
-> ⚠️ Windows Defender may show a warning for unsigned `.exe` files from unknown publishers.  
-> Click **"More info" → "Run anyway"** — the app is open source and safe.
+**Q: How long does the scan take?**  
+A: Step 3 (Boot Simulation) takes 10–30 min for 10,000+ mods. It runs in the background while you do other things.
+
+**Q: The game still crashes after using this?**  
+A: Run Step 3 again — something new may have been flagged. Also check the **Log Analyzer** tab with your `lastException.txt`.
+
+**Q: What's the CC Health Grade?**  
+A: After the scan, the app grades your mod collection A–F:
+- **A** = Clean! No broken mods, no real issues
+- **B** = Minor issues, some duplicate CC
+- **C** = Some broken mods or heavy duplicates
+- **D/F** = Critical mods that will crash the game
+
+**Q: Windows says "protected your PC" — is it safe?**  
+A: Yes. Click **"More info" → "Run anyway"**. This warning appears because the `.exe` doesn't have an expensive code-signing certificate, not because it's dangerous. All source code is right here on GitHub.
 
 ---
 
-## 🛠️ Run From Source
-
-**Requirements**: Python 3.10+
+## 🛠️ For Developers — Run From Source
 
 ```bash
 git clone https://github.com/HuciferX/Sims4ModGuard.git
@@ -173,75 +138,37 @@ pip install -r requirements.txt
 python gui_app.py
 ```
 
-Or use the CLI:
-```bash
-python run.py --help
-python run.py --scan-only
-python run.py --full-scan
-python run.py --fix
-```
-
----
-
-## 🔨 Build the .exe Yourself
-
+**Build your own .exe:**
 ```bash
 pip install pyinstaller
-python -m PyInstaller --onefile --windowed --name "Sims4ModGuard" gui_app.py
+pyinstaller --onefile --windowed --name "Sims4ModGuard" gui_app.py
+# Output: dist/Sims4ModGuard.exe
 ```
 
-The output will be at `dist/Sims4ModGuard.exe`.
-
----
-
-## 🧩 What Mods Are Detected?
-
-Sims4ModGuard flags mods using patterns that broke in **Patch 1.105+** and are confirmed broken through **1.121**:
-
-| Pattern | Why It's Broken |
-|--------|----------------|
-| `inject_load_data_into_class_instances` | Genealogy caching API removed |
-| `HasTunableReference` | Tunable reference system changed |
-| `add_super_affordances` | Affordance injection API removed |
-| `lmsinjector` | Scumbumbo's injector no longer compatible |
-| `add_wicked_attributes` | WickedWhims dependency (WW not installed) |
-| `leroi_death_injector` | LeRoi death system removed |
-
-**Whitelisted** (known good, never flagged):
-- MCCC 2026.1.1+
-- Basemental 8.18+
-- BetterExceptions
-- XmlInjector
-- Kuttoe ForbiddenSpells
-
----
-
-## 📁 Project Structure
-
-```
-Sims4ModGuard/
-├── gui_app.py              # Cyberpunk GUI dashboard (tkinter + customtkinter)
-├── run.py                  # CLI entry point
-├── requirements.txt
-├── README.md
-└── sims4modguard/
-    ├── known_patterns.py   # All detection rules, whitelist, update URLs
-    ├── scanner.py          # .ts4script ZIP scanner
-    ├── cc_cleaner.py       # .package DBPF validator + duplicate finder
-    ├── log_parser.py       # lastException.txt parser
-    ├── quarantine.py       # Safe file mover with JSON manifest
-    ├── cache_manager.py    # Cache clearing + folder detection
-    └── main.py             # CLI orchestrator
+**Run the CLI audit (saves HTML + text report):**
+```bash
+python run_audit.py
 ```
 
 ---
 
-## 🤝 Contributing
+## 📁 What's in the Repo
 
-Pull requests welcome! If you find a new broken pattern or know of a mod that should be whitelisted, open an issue or PR.
-
-**To add a broken pattern**: edit `sims4modguard/known_patterns.py` — `BROKEN_PATTERNS` dict.  
-**To whitelist a mod**: add the script filename to `WHITELIST_SCRIPTS`.
+| File | What It Does |
+|------|-------------|
+| `gui_app.py` | The full app window — wizard, tabs, all UI |
+| `run_audit.py` | CLI version: full scan + saves HTML report |
+| `sims4modguard/boot_engine.py` | The 7-phase boot simulator |
+| `sims4modguard/game_index.py` | Reads real game files (3,500+ modules) |
+| `sims4modguard/step_indicator.py` | Animated wizard step circles (Pillow glow) |
+| `sims4modguard/save_analyzer.py` | Save file analyzer + clean-save generator |
+| `sims4modguard/run_logger.py` | HTML + text audit log with update links |
+| `sims4modguard/mod_database.py` | 40+ known mods with official update URLs |
+| `sims4modguard/dlc_database.py` | All 45 DLC packs |
+| `sims4modguard/scanner.py` | .ts4script ZIP scanner |
+| `sims4modguard/cc_cleaner.py` | .package DBPF validator |
+| `sims4modguard/log_parser.py` | lastException.txt → plain English |
+| `sims4modguard/quarantine.py` | Safe file mover with restore manifest |
 
 ---
 
@@ -254,9 +181,8 @@ MIT — free for personal and community use. Credit appreciated but not required
 ## 🙏 Credits
 
 - **Hucifer** — concept, vision, testing
-- **🦉 Hypatia** — engineering, pattern research, build
-- Community mod authors who open-source their work and make fixing possible
-- The Sims 4 modding community at large — you're the reason this exists
+- **🦉 Hypatia** — engineering, AI, build
+- The Sims 4 modding community — you're the reason this exists
 
 ---
 

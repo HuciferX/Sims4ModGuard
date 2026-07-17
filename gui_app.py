@@ -1898,7 +1898,13 @@ github.com/HuciferX/Sims4ModGuard
                             border_color=NEON_PINK, border_width=2,
                             corner_radius=8)
         card._is_fix_all = True
-        card.pack(fill="x", padx=6, pady=6, after=self._wiz_widgets["simulate"]["card"])
+        # Use 'row' (new accordion) or 'card' (old design) as reference widget
+        sim_w = self._wiz_widgets.get("simulate", {})
+        ref   = sim_w.get("row") or sim_w.get("card")
+        if ref:
+            card.pack(fill="x", padx=6, pady=6, after=ref)
+        else:
+            card.pack(fill="x", padx=6, pady=6)
 
         ctk.CTkLabel(card,
                      text="  ⚡ ONE-CLICK FIX ALL",
@@ -1983,15 +1989,21 @@ github.com/HuciferX/Sims4ModGuard
             return
         w = self._wiz_widgets["index"]
         self._wiz_set_state("index", self._WIZ_RUNNING)
-        w["detail_lbl"].configure(
-            text="Reading game Python ZIPs and DBPF packages...\n"
-                 "This takes ~45 seconds and is cached for future runs.")
+        # Update subtitle with progress info (result_lbl is in new accordion design)
+        if "result_lbl" in w:
+            w["result_lbl"].configure(
+                text="Reading game Python ZIPs and DBPF packages...\n"
+                     "This takes ~45 seconds and is cached for future runs.",
+                text_color=NEON_AMBER)
+            w["result_lbl"].pack(fill="x", padx=2, pady=(2, 4))
 
         def worker():
             idx = GameIndex(self._wiz_game_root)
 
             def progress(msg):
-                self.after(0, lambda m=msg: w["detail_lbl"].configure(text=m))
+                if "result_lbl" in w:
+                    self.after(0, lambda m=msg: w["result_lbl"].configure(
+                        text=m, text_color=TEXT_DIM) if w["result_lbl"].winfo_exists() else None)
 
             if idx.needs_rebuild():
                 idx.build(progress_cb=progress)
@@ -2029,9 +2041,11 @@ github.com/HuciferX/Sims4ModGuard
 
         w = self._wiz_widgets["simulate"]
         self._wiz_set_state("simulate", self._WIZ_RUNNING)
-        w["detail_lbl"].configure(
-            text="Running 7-phase simulation... switch to [SIM] BOOT SIM tab\n"
-                 "to see the live phase-by-phase progress log.")
+        if "result_lbl" in w:
+            w["result_lbl"].configure(
+                text="Running 7-phase simulation... check the BOOT SIM tab for live progress.",
+                text_color=NEON_AMBER)
+            w["result_lbl"].pack(fill="x", padx=2, pady=(2, 4))
         self._switch_tab("bootsim")
 
         # Trigger the boot sim tab's runner (which uses the same backend)
@@ -2068,8 +2082,11 @@ github.com/HuciferX/Sims4ModGuard
             return
 
         self._wiz_set_state("fix", self._WIZ_RUNNING)
-        self._wiz_widgets["fix"]["detail_lbl"].configure(
-            text="Quarantining critical mods...")
+        w_fix = self._wiz_widgets["fix"]
+        if "result_lbl" in w_fix:
+            w_fix["result_lbl"].configure(text="Quarantining critical mods...",
+                                           text_color=NEON_AMBER)
+            w_fix["result_lbl"].pack(fill="x", padx=2, pady=(2, 4))
 
         def worker():
             moved = 0
@@ -2127,11 +2144,12 @@ github.com/HuciferX/Sims4ModGuard
             messagebox.showwarning("Step 1 First", "Complete Step 1 first.")
             return
 
-        w = self._wiz_widgets["save"]
-        card = w["card"]
+        w       = self._wiz_widgets["save"]
+        # Use 'content' (new accordion) or 'card' (old design) as parent
+        parent_frame = w.get("content") or w.get("card") or w.get("row")
 
-        # Clean up any previous inline frame
-        for child in card.winfo_children():
+        # Clean up any previous inline save sub-frame
+        for child in parent_frame.winfo_children():
             if getattr(child, '_is_save_sub', False):
                 child.destroy()
 
@@ -2140,13 +2158,12 @@ github.com/HuciferX/Sims4ModGuard
         self._wiz_save_report   = None
         self._wiz_sa            = None
 
-        # ── Sub-frame injected into the card at row 5 ──
-        sub = ctk.CTkFrame(card, fg_color="#0d0022",
+        # ── Sub-frame appended below the detail_frame in content area ──
+        sub = ctk.CTkFrame(parent_frame, fg_color="#0d0022",
                            border_color=NEON_PINK, border_width=1,
                            corner_radius=6)
         sub._is_save_sub = True
-        sub.grid(row=5, column=0, columnspan=2,
-                 sticky="ew", padx=12, pady=(0, 12))
+        sub.pack(fill="x", padx=0, pady=(4, 8))
 
         # ─ Header
         ctk.CTkLabel(sub,
@@ -2224,9 +2241,11 @@ github.com/HuciferX/Sims4ModGuard
         self._wiz_save_result_lbl.pack(fill="x", padx=8, pady=(0, 8))
 
         # Mark step as active/open
-        w["status_lbl"].configure(text="SELECT SAVE", text_color=NEON_PINK,
-                                   fg_color=_dim_color(NEON_PINK, 0.15))
-        w["btn"].configure(text=">> SHOW MY SAVE FILES")  # re-enable
+        badge = w.get("status_badge") or w.get("status_lbl")
+        if badge:
+            badge.configure(text="SELECT SAVE", text_color=NEON_PINK,
+                            fg_color=_dim_color(NEON_PINK, 0.15))
+        w["btn"].configure(text="  ▶  Show My Save Files  ")  # re-enable
 
     def _wiz_save_select(self, save_path: Path):
         """Highlight a save file selection and enable the scan button."""
