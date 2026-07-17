@@ -1,0 +1,262 @@
+{
+  "timestamp": "2026-07-17T01:11:43.684739",
+  "ww_script_found": false,
+  "ww_script_paths": [],
+  "basemental_script_status": "WARNING: basementaldrugs.ts4script (2025-08-01) contains removed API.\n  Download latest from: https://basementalcc.com/adult_mods/basemental-drugs/\n  The package files look current (March 2026) but the script is old (2025-08-01).",
+  "exact_duplicates_removed": [
+    {
+      "name": "Andirz_PSO_OnlineStore_Addon_Remove_FromPhone.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\Andirz_PSO_OnlineStore_Addon_Remove_FromPhone.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\AddOns\\Andirz_PSO_OnlineStore_Addon_Remove_FromPhone.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "Andirz_PSO_OnlineStore_AddOn_Unlock_EventRewards.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\Andirz_PSO_OnlineStore_AddOn_Unlock_EventRewards.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\AddOns\\Andirz_PSO_OnlineStore_AddOn_Unlock_EventRewards.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_Override Ingredients_BG.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_Override Ingredients_BG.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Ingredients_Additions\\RCM_Override Ingredients_BG.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_Override Ingredients_EP01 Get to Work.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_Override Ingredients_EP01 Get to Work.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Ingredients_Additions\\RCM_Override Ingredients_EP01 Get to Work.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_Override Ingredients_EP05 Seasons.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_Override Ingredients_EP05 Seasons.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Ingredients_Additions\\RCM_Override Ingredients_EP05 Seasons.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_Override Ingredients_EP07 Island Living.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_Override Ingredients_EP07 Island Living.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Ingredients_Additions\\RCM_Override Ingredients_EP07 Island Living.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_Override Ingredients_EP09 Eco Lifestyle.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_Override Ingredients_EP09 Eco Lifestyle.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Ingredients_Additions\\RCM_Override Ingredients_EP09 Eco Lifestyle.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_Override Ingredients_EP11 Cottage Living.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_Override Ingredients_EP11 Cottage Living.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Ingredients_Additions\\RCM_Override Ingredients_EP11 Cottage Living.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_Override Ingredients_GP01 Outdoor Retreat.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_Override Ingredients_GP01 Outdoor Retreat.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Ingredients_Additions\\RCM_Override Ingredients_GP01 Outdoor Retreat.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_Override Ingredients_GP04 Vampires.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_Override Ingredients_GP04 Vampires.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Ingredients_Additions\\RCM_Override Ingredients_GP04 Vampires.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_Override Ingredients_GP06 Jungle Adventure.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_Override Ingredients_GP06 Jungle Adventure.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Ingredients_Additions\\RCM_Override Ingredients_GP06 Jungle Adventure.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_Override Ingredients_SP46 Home Chef Hustle.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_Override Ingredients_SP46 Home Chef Hustle.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Ingredients_Additions\\RCM_Override Ingredients_SP46 Home Chef Hustle.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_EP02 Get Together.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_EP02 Get Together.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_EP02 Get Together.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_EP04 Cats and Dogs.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_EP04 Cats and Dogs.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_EP04 Cats and Dogs.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_EP05 Seasons.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_EP05 Seasons.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_EP05 Seasons.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_EP06 Get Famous.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_EP06 Get Famous.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_EP06 Get Famous.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_EP07 Island Living.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_EP07 Island Living.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_EP07 Island Living.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_EP08 Discover University.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_EP08 Discover University.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_EP08 Discover University.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_EP12 TheHighSchoolYears.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_EP12 TheHighSchoolYears.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_EP12 TheHighSchoolYears.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_EP13 Growing Together.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_EP13 Growing Together.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_EP13 Growing Together.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_EP14 Horse Ranch.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_EP14 Horse Ranch.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_EP14 Horse Ranch.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_EP15 For Rent.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_EP15 For Rent.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_EP15 For Rent.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_EP16 Lovestruck.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_EP16 Lovestruck.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_EP16 Lovestruck.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_EP20 Adventure Awaits.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_EP20 Adventure Awaits.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_EP20 Adventure Awaits.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_EP21 Royalty and Legacy.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_EP21 Royalty and Legacy.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_EP21 Royalty and Legacy.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_GP01 Outdoor Retreat.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_GP01 Outdoor Retreat.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_GP01 Outdoor Retreat.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_GP02 Spa Day.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_GP02 Spa Day.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_GP02 Spa Day.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_GP05 Parenthood.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_GP05 Parenthood.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_GP05 Parenthood.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_GP06 Jungle Adventure.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_GP06 Jungle Adventure.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_GP06 Jungle Adventure.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_GP08_Realm_of_Magic.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_GP08_Realm_of_Magic.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_GP08_Realm_of_Magic.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_GP09 StarWarsJourney to Batuu.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_GP09 StarWarsJourney to Batuu.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_GP09 StarWarsJourney to Batuu.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_GP12 Werewolves.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_GP12 Werewolves.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_GP12 Werewolves.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_SP01 Luxury Party Stuff.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_SP01 Luxury Party Stuff.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_SP01 Luxury Party Stuff.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_SP03_Cool_Kitchen_Stuff.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_SP03_Cool_Kitchen_Stuff.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_SP03_Cool_Kitchen_Stuff.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_SP04 Spooky Stuff.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_SP04 Spooky Stuff.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_SP04 Spooky Stuff.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_SP05 Movie Hangout Stuff.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_SP05 Movie Hangout Stuff.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_SP05 Movie Hangout Stuff.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "RCM_OverrideRecipes_SP46 Home Chef Hustle.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\RCM_OverrideRecipes_SP46 Home Chef Hustle.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Recipes_Additions\\RCM_OverrideRecipes_SP46 Home Chef Hustle.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "SOHO_Woven_Rug.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\SOHO_Woven_Rug.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\Felixandre SOHO Part 1\\SOHO_Woven_Rug.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "[SS] EA Override Menu.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] EA Override Menu.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] EA Override (Optional)\\[SS] EA Override Menu.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "[SS] Recipe_Ingredient_Biscuit.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] Recipe_Ingredient_Biscuit.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] Ingredients_EP01 Get to Work\\[SS] Recipe_Ingredient_Biscuit.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "[SS] Recipe_Ingredient_Dough.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] Recipe_Ingredient_Dough.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] Ingredients_EP01 Get to Work\\[SS] Recipe_Ingredient_Dough.package",
+      "reason": "Exact filename duplicate"
+    },
+    {
+      "name": "[SS] Recipe_Ingredient_Pie_Crust.package",
+      "removed": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] Recipe_Ingredient_Pie_Crust.package",
+      "kept": "C:\\Users\\merli\\Documents\\Electronic Arts\\The Sims 4\\Mods\\[SS] RealisticCookingMod V.7.4\\[SS] Ingredients_EP01 Get to Work\\[SS] Recipe_Ingredient_Pie_Crust.package",
+      "reason": "Exact filename duplicate"
+    }
+  ],
+  "near_exact_removed": [],
+  "caches_cleared_mb": 0
+}

@@ -1,0 +1,96 @@
+
+══════════════════════════════════════════════════════════════════════
+  SIMS 4 STRIP CLUB COMPATIBILITY SIMULATION
+══════════════════════════════════════════════════════════════════════
+  2026-07-17 01:08:42
+
+──────────────────────────────────────────────────────────────────────
+  DLC REQUIREMENTS
+──────────────────────────────────────────────────────────────────────
+  ✓ EP01 Get to Work          [REQUIRED]  REQUIRED for Strip Club business type
+  ✓ EP02 Get Together         [Optional]  Recommended for Club activities at strip clubs
+  ✓ GP04 Vampires             [Optional]  Optional — WW has special vampire + strip club interactions
+
+──────────────────────────────────────────────────────────────────────
+  MOD STATUS
+──────────────────────────────────────────────────────────────────────
+  ✗ WickedWhims Script                  [REQUIRED]
+       NOT FOUND — https://turbodriver.itch.io/wickedwhims
+       The brain of WickedWhims. Without this, nothing works.
+
+  ✓ WickedWhims Tuning                  [REQUIRED]
+       C:\Users\merli\Documents\Electronic Arts\The Sims 4\Mods\TUR
+       Game data/settings for WickedWhims.
+
+  ✓ Stripping Mod                       [REQUIRED]
+       C:\Users\merli\Documents\Electronic Arts\The Sims 4\Mods\WW_
+       Adds the Stripping career/interactions for strip club dancers.
+
+  ✓ Sexy Gigs - Porn Star               [Optional]
+       C:\Users\merli\Documents\Electronic Arts\The Sims 4\Mods\WW_
+       Porn star career, works with strip club.
+
+  ✓ Sexy Gigs - Porn Director           [Optional]
+       C:\Users\merli\Documents\Electronic Arts\The Sims 4\Mods\WW_
+       Director for porn/strip content.
+
+  ✓ SI7 Adult Dance Floor               [Optional]
+       C:\Users\merli\Documents\Electronic Arts\The Sims 4\Mods\WW_
+       Animated dance floors for strip clubs.
+
+  ✓ SI7 Adult Venue CC                  [Optional]
+       C:\Users\merli\Documents\Electronic Arts\The Sims 4\Mods\WW_
+       Strip club furniture and decor sets.
+
+  ✓ Basemental Drugs                    [Optional]
+       C:\Users\merli\Documents\Electronic Arts\The Sims 4\Mods\Bas
+       Drug use/dealing at the strip club. Integrates with WW.
+
+  ✓ Basemental Drugs Script             [Optional]
+       C:\Users\merli\Documents\Electronic Arts\The Sims 4\Mods\Bas
+       The Python script for Basemental Drugs.
+
+  ✓ Basemental Gangs                    [Optional]
+       C:\Users\merli\Documents\Electronic Arts\The Sims 4\Mods\Bas
+       Gang system — adds protection rackets at the strip club.
+
+  ✓ NisaK Wicked Perversions            [Optional]
+       C:\Users\merli\Documents\Electronic Arts\The Sims 4\Mods\WW_
+       Adult expansion for WW. Adds many more interactions.
+
+  ✓ EVE v10 Body                        [Optional]
+       C:\Users\merli\Documents\Electronic Arts\The Sims 4\Mods\WW_
+       Animated female body for WickedWhims animations.
+
+  ✓ BTTB Body                           [Optional]
+       C:\Users\merli\Documents\Electronic Arts\The Sims 4\Mods\WW_
+       BTTB male body for WickedWhims animations.
+
+  ✓ Smooth Vagina                       [Optional]
+       C:\Users\merli\Documents\Electronic Arts\The Sims 4\Mods\[No
+       WW-compatible female anatomy.
+
+  ✓ PornstarCock                        [Optional]
+       C:\Users\merli\Documents\Electronic Arts\The Sims 4\Mods\[No
+       WW-compatible male anatomy options.
+
+  ✓ Anarcis Animations                  [Optional]
+       C:\Users\merli\Documents\Electronic Arts\The Sims 4\Mods\Wic
+       Large high-quality animation pack for WickedWhims.
+
+  ✓ GreyNaya Animations                 [Optional]
+       C:\Users\merli\Documents\Electronic Arts\The Sims 4\Mods\Wic
+       Animation pack including strip club-specific poses.
+
+  ✓ 0nizu Animations                    [Optional]
+       C:\Users\merli\Documents\Electronic Arts\The Sims 4\Mods\Wic
+       High-quality animation pack.
+
+
+──────────────────────────────────────────────────────────────────────
+  STRIP CLUB READINESS VERDICT
+──────────────────────────────────────────────────────────────────────
+  ✗ NOT READY — Missing required components:
+    • WickedWhims Script → https://turbodriver.itch.io/wickedwhims
+
+══════════════════════════════════════════════════════════════════════
