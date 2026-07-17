@@ -6,12 +6,15 @@ By Hucifer & Hypatia
 """
 
 import sys
+import os
+import shutil
 import threading
 import queue
 import time
 import random
 import subprocess
 import re
+import webbrowser
 from datetime import datetime
 from pathlib import Path
 
@@ -31,6 +34,8 @@ from sims4modguard.game_index     import GameIndex, DEFAULT_GAME_ROOT
 from sims4modguard.boot_engine    import BootEngine, PHASES
 from sims4modguard.save_analyzer  import SaveAnalyzer
 from sims4modguard.run_logger     import RunLogger
+from sims4modguard.mod_database   import lookup_mod
+from sims4modguard.step_indicator  import StepIndicator, ConnectorLine
 
 # -- Theme constants ------------------------------------------------------------
 BG_DEEP     = "#050510"
@@ -71,6 +76,89 @@ PLUMBOB = """
 BANNER_ART = "** SIMS 4 MOD GUARDIAN **"
 
 # -- Utility helpers ------------------------------------------------------------
+
+# ── Toast notification ─────────────────────────────────────────────────────────
+
+class Toast:
+    """
+    Small slide-in notification in the bottom-right corner.
+    Auto-dismisses after `duration` ms.  Multiple toasts stack upward.
+    """
+    _stack: list = []          # class-level stack of active toasts
+    _OFFSET_Y = 48             # vertical spacing between stacked toasts
+
+    def __init__(self, parent, message: str, sev: str = "ok", duration: int = 3500):
+        colors = {
+            "ok":       ("#00ff9f", "#001a0d"),
+            "warning":  ("#ffaa00", "#1a0d00"),
+            "critical": ("#ff003c", "#1a000a"),
+            "info":     ("#00e5ff", "#001a1a"),
+        }
+        fg, bg = colors.get(sev, colors["ok"])
+
+        self._win = ctk.CTkToplevel(parent)
+        self._win.withdraw()
+        self._win.overrideredirect(True)
+        self._win.configure(fg_color=bg)
+        self._win.attributes("-topmost", True)
+        self._win.attributes("-alpha", 0.0)
+
+        # Content
+        frame = ctk.CTkFrame(self._win, fg_color=bg,
+                             border_color=fg, border_width=1,
+                             corner_radius=6)
+        frame.pack(padx=0, pady=0)
+        ctk.CTkLabel(frame, text=message,
+                     font=("Courier New", 10, "bold"),
+                     text_color=fg,
+                     wraplength=340).pack(padx=14, pady=10)
+
+        Toast._stack.append(self)
+        parent.update_idletasks()
+        self._win.update_idletasks()
+
+        # Position bottom-right
+        sw = parent.winfo_screenwidth()
+        sh = parent.winfo_screenheight()
+        tw = max(self._win.winfo_reqwidth(), 300)
+        th = self._win.winfo_reqheight()
+        stack_idx = len(Toast._stack) - 1
+        tx = sw - tw - 24
+        ty = sh - 80 - (th + self._OFFSET_Y) * stack_idx - th
+        self._win.geometry(f"{tw}x{th}+{tx}+{ty}")
+        self._win.deiconify()
+
+        # Fade in
+        self._fade(parent, 0.0, 1.0, 150, duration)
+
+    def _fade(self, parent, current_alpha: float, target: float,
+              step_ms: int, dismiss_after_ms: int):
+        new_alpha = current_alpha + (0.1 if target > current_alpha else -0.1)
+        new_alpha = max(0.0, min(1.0, new_alpha))
+        try:
+            self._win.attributes("-alpha", new_alpha)
+        except Exception:
+            self._dismiss(); return
+
+        if abs(new_alpha - target) > 0.05:
+            parent.after(step_ms, lambda: self._fade(parent, new_alpha, target,
+                                                      step_ms, dismiss_after_ms))
+        elif target == 1.0:
+            # Fully visible — schedule dismiss
+            parent.after(dismiss_after_ms,
+                         lambda: self._fade(parent, 1.0, 0.0, 60, 0))
+        else:
+            # Faded out
+            self._dismiss()
+
+    def _dismiss(self):
+        try:
+            self._win.destroy()
+        except Exception:
+            pass
+        if self in Toast._stack:
+            Toast._stack.remove(self)
+
 
 def _dim_color(hex_color: str, factor: float = 0.25) -> str:
     """
@@ -321,7 +409,7 @@ class Sims4ModGuardApp(ctk.CTk):
         parent.rowconfigure(2, weight=1)
 
         # Left: tab buttons
-        tab_btn_col = ctk.CTkFrame(tab_bar, fg_color=BG_HEADER, width=190)
+        tab_btn_col = ctk.CTkFrame(tab_bar, fg_color=BG_HEADER, width=210)
         tab_btn_col.pack(side="left", fill="y", padx=(0, 1))
         tab_btn_col.pack_propagate(False)
 
@@ -331,37 +419,75 @@ class Sims4ModGuardApp(ctk.CTk):
         self._tab_frames = {}
         self._tab_btns   = {}
 
+        # (icon, key, label, builder)
         tabs = [
-            ("[>>] WIZARD",         "wizard",     self._build_wizard_tab),
-            ("[>>]  SCAN SCRIPTS",  "scan",       self._build_scan_tab),
-            ("[##]  CC CLEANER",    "cc",         self._build_cc_tab),
-            ("[!!]  LOG ANALYZER",  "logs",       self._build_logs_tab),
-            ("[WR]  FIX & REPAIR",  "fix",        self._build_fix_tab),
-            ("[INV] INVENTORY",     "inventory",  self._build_inventory_tab),
-            ("[SIM] BOOT SIM",      "bootsim",    self._build_bootsim_tab),
-            ("[SAV] SAVE DOCTOR",   "savedoctor", self._build_savedoctor_tab),
-            ("[>_]  CONSOLE",       "console",    self._build_console_tab),
-            ("[>G] LAUNCHER",       "launcher",   self._build_launcher_tab),
-            ("[??]   ABOUT",        "about",       self._build_about_tab),
+            ("\u2756", "wizard",     "WIZARD",       self._build_wizard_tab),
+            ("\U0001f50d", "scan",       "SCAN SCRIPTS", self._build_scan_tab),
+            ("\u2699",  "cc",         "CC CLEANER",   self._build_cc_tab),
+            ("\U0001f4cb", "logs",       "LOG ANALYZER", self._build_logs_tab),
+            ("\U0001f527", "fix",        "FIX & REPAIR", self._build_fix_tab),
+            ("\U0001f4e6", "inventory",  "INVENTORY",    self._build_inventory_tab),
+            ("\u25b6",  "bootsim",    "BOOT SIM",     self._build_bootsim_tab),
+            ("\U0001f4be", "savedoctor", "SAVE DOCTOR",  self._build_savedoctor_tab),
+            ("\U0001f4c4", "report",     "REPORT",       self._build_report_tab),
+            (">_",      "console",    "CONSOLE",      self._build_console_tab),
+            ("\U0001f680", "launcher",   "LAUNCHER",     self._build_launcher_tab),
+            ("\u24d8",  "about",      "ABOUT",        self._build_about_tab),
         ]
 
-        ctk.CTkLabel(tab_btn_col, text="* NAVIGATION *",
-                     font=FONT_SMALL, text_color="#00805a").pack(pady=(12, 6))
+        # Nav header
+        hdr_f = ctk.CTkFrame(tab_btn_col, fg_color="#050520",
+                             height=44, corner_radius=0)
+        hdr_f.pack(fill="x")
+        hdr_f.pack_propagate(False)
+        ctk.CTkLabel(hdr_f, text="\U0001f989 HYPATIA",
+                     font=("Courier New", 11, "bold"),
+                     text_color=NEON_GREEN).pack(side="left", padx=10, pady=10)
 
-        for label, key, builder in tabs:
+        for icon, key, label, builder in tabs:
             frame = ctk.CTkFrame(self._tab_content, fg_color=BG_PANEL)
             builder(frame)
             self._tab_frames[key] = frame
 
-            btn = ctk.CTkButton(
-                tab_btn_col, text=label, font=("Courier New", 10, "bold"),
-                fg_color=BG_HEADER, border_width=0,
-                text_color=TEXT_DIM, hover_color="#001a10",
-                anchor="w", corner_radius=0,
-                command=lambda k=key: self._switch_tab(k),
-            )
-            btn.pack(fill="x", padx=4, pady=2)
-            self._tab_btns[key] = btn
+            btn_frame = ctk.CTkFrame(tab_btn_col, fg_color="transparent",
+                                      corner_radius=0, height=40)
+            btn_frame.pack(fill="x", padx=0, pady=0)
+            btn_frame.pack_propagate(False)
+            btn_frame.columnconfigure(1, weight=1)
+
+            icon_lbl = ctk.CTkLabel(btn_frame, text=icon,
+                                     font=("Segoe UI Emoji", 14),
+                                     text_color=TEXT_DIM, width=36)
+            icon_lbl.grid(row=0, column=0, padx=(8, 0))
+
+            text_lbl = ctk.CTkLabel(btn_frame, text=label,
+                                     font=("Courier New", 9, "bold"),
+                                     text_color=TEXT_DIM, anchor="w")
+            text_lbl.grid(row=0, column=1, sticky="ew", padx=(4, 8))
+
+            # Left accent bar (hidden by default, shown when active)
+            accent = ctk.CTkFrame(btn_frame, fg_color=TEXT_DIM,
+                                   width=3, corner_radius=0)
+            accent.place(x=0, y=0, relheight=1)
+
+            def _on_click(k=key, bf=btn_frame, ac=accent,
+                          il=icon_lbl, tl=text_lbl):
+                self._switch_tab(k)
+
+            btn_frame.bind("<Button-1>", lambda e, k=key: self._switch_tab(k))
+            icon_lbl.bind("<Button-1>", lambda e, k=key: self._switch_tab(k))
+            text_lbl.bind("<Button-1>", lambda e, k=key: self._switch_tab(k))
+            btn_frame.bind("<Enter>",
+                lambda e, bf=btn_frame: bf.configure(fg_color="#0a0a20"))
+            btn_frame.bind("<Leave>",
+                lambda e, bf=btn_frame: bf.configure(
+                    fg_color=BG_CARD if bf.cget('fg_color') == "#0a0a20" or
+                    bf.cget('fg_color') == "#0a0a20" else "transparent"))
+
+            self._tab_btns[key] = {
+                "frame": btn_frame, "icon": icon_lbl,
+                "text": text_lbl, "accent": accent,
+            }
 
         # Show wizard tab first
         self._switch_tab("wizard")
@@ -369,14 +495,21 @@ class Sims4ModGuardApp(ctk.CTk):
     def _switch_tab(self, key: str):
         for k, f in self._tab_frames.items():
             f.pack_forget()
-        for k, b in self._tab_btns.items():
-            b.configure(text_color=TEXT_DIM, fg_color=BG_HEADER)
+        # Reset all nav buttons to dim
+        for k, bdict in self._tab_btns.items():
+            bdict["frame"].configure(fg_color="transparent")
+            bdict["icon"].configure(text_color=TEXT_DIM)
+            bdict["text"].configure(text_color=TEXT_DIM)
+            bdict["accent"].configure(fg_color="transparent")
 
         self._tab_frames[key].pack(fill="both", expand=True, padx=8, pady=8)
-        self._tab_btns[key].configure(
-            text_color=NEON_GREEN,
-            fg_color=BG_CARD,
-        )
+
+        # Highlight active nav button
+        active = self._tab_btns[key]
+        active["frame"].configure(fg_color=BG_CARD)
+        active["icon"].configure(text_color=NEON_GREEN)
+        active["text"].configure(text_color=NEON_GREEN)
+        active["accent"].configure(fg_color=NEON_GREEN)
 
     # -- Tab builders ----------------------------------------------------------
 
@@ -1189,6 +1322,7 @@ github.com/HuciferX/Sims4ModGuard
         self._fix_log(f"  Cleared {len(result['files'])} cache files ({mb} MB freed)", "ok")
         self._stat_cache.set("0")
         self._status("* Caches cleared")
+        Toast(self, f"✓ Caches cleared  ({mb} MB freed)", sev="ok")
 
     def _clear_cache_silent(self):
         if self.s4_folder:
@@ -1297,132 +1431,247 @@ github.com/HuciferX/Sims4ModGuard
     }
 
     def _build_wizard_tab(self, parent):
-        """Guided step-by-step wizard. This is the default starting view."""
-        # State tracking per step
-        self._wiz_states = {}       # step_key -> state string
-        self._wiz_widgets = {}      # step_key -> {status_lbl, detail_lbl, btn, arrow_lbl}
-        self._wiz_game_root = DEFAULT_GAME_ROOT
+        """Guided accordion stepper wizard."""
+        # State tracking
+        self._wiz_states      = {}
+        self._wiz_widgets     = {}
+        self._wiz_indicators  = {}   # key -> StepIndicator
+        self._wiz_connectors  = {}   # key -> ConnectorLine
+        self._wiz_game_root   = DEFAULT_GAME_ROOT
         self._wiz_boot_report = None
-        self._wiz_index = None
+        self._wiz_index       = None
         self._wiz_active_step = None
 
-        # Header
-        hdr = ctk.CTkFrame(parent, fg_color=BG_HEADER, corner_radius=6)
-        hdr.pack(fill="x", pady=(0, 10))
+        # ── Header bar ─────────────────────────────────────────────────────────────
+        hdr = ctk.CTkFrame(parent, fg_color="#020218", corner_radius=0)
+        hdr.pack(fill="x")
         ctk.CTkLabel(hdr,
-                     text="  GUIDED WIZARD  —  follow each step in order",
-                     font=("Courier New", 12, "bold"),
-                     text_color=NEON_GREEN).pack(side="left", padx=12, pady=8)
+                     text="  ❖  SETUP WIZARD",
+                     font=("Courier New", 14, "bold"),
+                     text_color=NEON_GREEN).pack(side="left", padx=14, pady=10)
         ctk.CTkLabel(hdr,
-                     text="All steps complete before launching the game",
-                     font=FONT_SMALL, text_color=TEXT_DIM).pack(side="right", padx=12)
+                     text="Complete each step in order to prepare your game for a clean boot  ",
+                     font=("Courier New", 9),
+                     text_color=TEXT_DIM).pack(side="right")
 
-        # Scrollable step cards
+        # ── Overall progress bar ─────────────────────────────────────────────────────
+        prog_row = ctk.CTkFrame(parent, fg_color="transparent")
+        prog_row.pack(fill="x", padx=16, pady=(6, 0))
+        self._wiz_overall_bar = ctk.CTkProgressBar(
+            prog_row, progress_color=NEON_GREEN, fg_color="#0a0a1a",
+            height=4, corner_radius=2)
+        self._wiz_overall_bar.pack(fill="x")
+        self._wiz_overall_bar.set(0)
+        self._wiz_prog_lbl = ctk.CTkLabel(
+            prog_row, text="",
+            font=FONT_SMALL, text_color=TEXT_DIM)
+        self._wiz_prog_lbl.pack(anchor="e")
+
+        # ── Scrollable stepper ─────────────────────────────────────────────────────
         scroll = ctk.CTkScrollableFrame(parent, fg_color=BG_DEEP,
-                                        scrollbar_button_color="#002d1e")
-        scroll.pack(fill="both", expand=True)
+                                         scrollbar_button_color="#002d1e")
+        scroll.pack(fill="both", expand=True, pady=(8, 0))
         self._wiz_scroll = scroll
 
-        # Define steps
         steps = [
-            {
-                "key":   "detect",
-                "num":   "1",
-                "title": "DETECT YOUR SIMS 4 FOLDERS",
-                "color": NEON_CYAN,
-                "time":  "Instant",
-                "what":  "Locates your Sims 4 user data folder (Mods, saves, logs) and\n"
-                         "your game installation (the actual game files EA ships).",
-                "btn_label": ">> AUTO-DETECT FOLDERS",
-                "action": self._wiz_step_detect,
-            },
-            {
-                "key":   "index",
-                "num":   "2",
-                "title": "INDEX REAL GAME FILES",
-                "color": NEON_PURPLE,
-                "time":  "~45 seconds first run, instant after (cached)",
-                "what":  "Reads the actual game Python modules (3,500+) and base-game\n"
-                         "resource IDs from your installation. This is what makes the\n"
-                         "simulation use REAL game data instead of just guessing.",
-                "btn_label": ">> BUILD GAME INDEX",
-                "action": self._wiz_step_index,
-            },
-            {
-                "key":   "simulate",
-                "num":   "3",
-                "title": "SIMULATE FULL BOOT (THE BIG SCAN)",
-                "color": NEON_GREEN,
-                "time":  "10–30 min for 13,000+ mods — runs in background",
-                "what":  "Simulates exactly what the game does when it boots:\n"
-                         "  • Checks every mod .py file imports valid game modules\n"
-                         "  • Finds broken injection patterns and removed APIs\n"
-                         "  • Detects resource conflicts between mods and EA's files\n"
-                         "  • Flags CC/mods buried too deep in subfolders (won't load)\n"
-                         "  • Produces a crash probability score and ranked issue list",
-                "btn_label": ">> RUN BOOT SIMULATION",
-                "action": self._wiz_step_simulate,
-            },
-            {
-                "key":   "fix",
-                "num":   "4",
-                "title": "FIX CRITICAL ISSUES",
-                "color": NEON_RED,
-                "time":  "Instant",
-                "what":  "Safely quarantines every mod flagged CRITICAL so it can't\n"
-                         "crash the game. Files are NEVER deleted — you can restore\n"
-                         "them any time from the FIX & REPAIR tab.",
-                "btn_label": ">> QUARANTINE ALL CRITICAL",
-                "action": self._wiz_step_fix,
-            },
-            {
-                "key":   "cache",
-                "num":   "5",
-                "title": "CLEAR GAME CACHES",
-                "color": NEON_AMBER,
-                "time":  "Instant",
-                "what":  "Deletes the localthumbcache and slot caches. You MUST\n"
-                         "do this after changing any mods or the game will use\n"
-                         "stale data and may crash on the loading screen.",
-                "btn_label": "~~ CLEAR ALL CACHES NOW",
-                "action": self._wiz_step_cache,
-            },
-            {
-                "key":   "save",
-                "num":   "6",
-                "title": "CHECK SAVE FILE  (optional but recommended)",
-                "color": NEON_PINK,
-                "time":  "2–5 min",
-                "what":  "Scans your save file for references to mods that are no\n"
-                         "longer installed. Orphaned references cause corrupted saves\n"
-                         "and loading-screen crashes. Can generate a cleaned save.",
-                "btn_label": ">> ANALYZE SAVE FILE",
-                "action": self._wiz_step_save,
-            },
+            {"key": "detect",   "num": "1", "color": NEON_CYAN,
+             "icon": "\U0001f4c1",
+             "title": "Detect Sims 4 Folders",
+             "subtitle": "Locate your Mods folder and game installation",
+             "bullets": ["Finds your Sims 4 user data (Mods, saves, logs)",
+                         "Finds your game installation (EA's actual game files)",
+                         "Required before any other step can run"],
+             "btn_label": "Auto-Detect Folders",
+             "action": self._wiz_step_detect, "time": "Instant"},
+
+            {"key": "index",    "num": "2", "color": NEON_PURPLE,
+             "icon": "\U0001f4ca",
+             "title": "Index Real Game Files",
+             "subtitle": "Read 3,500+ Python modules and base-game resources from your install",
+             "bullets": ["Extracts all game Python module names from simulation.zip",
+                         "Builds a resource ID table from SimulationFullBuild0.package",
+                         "Cached after first run — instant on future runs"],
+             "btn_label": "Build Game Index",
+             "action": self._wiz_step_index, "time": "~45 sec first run, instant after (cached)"},
+
+            {"key": "simulate", "num": "3", "color": NEON_GREEN,
+             "icon": "\U0001f52c",
+             "title": "Simulate Full Boot",
+             "subtitle": "Run all 7 phases of the game boot sequence without launching",
+             "bullets": ["Checks every mod .py for broken APIs and bad injection patterns",
+                         "Validates mod imports against the real 3,589-module game registry",
+                         "Detects resource conflicts between mods and EA base game",
+                         "Flags CC buried too deep in subfolders (silently ignored by game)",
+                         "Scores crash probability and ranks issues by severity"],
+             "btn_label": "Run Boot Simulation",
+             "action": self._wiz_step_simulate, "time": "10–30 min for 13,000+ mods"},
+
+            {"key": "fix",      "num": "4", "color": NEON_RED,
+             "icon": "\U0001f6e1",
+             "title": "Fix Critical Issues",
+             "subtitle": "Safely quarantine broken mods — files are never deleted",
+             "bullets": ["Moves CRITICAL mods to MODS_DISABLED folder",
+                         "Also removes near-exact duplicate CC (same content twice)",
+                         "Restore any file any time from the Fix & Repair tab"],
+             "btn_label": "Quarantine All Critical",
+             "action": self._wiz_step_fix, "time": "Instant"},
+
+            {"key": "cache",    "num": "5", "color": NEON_AMBER,
+             "icon": "\U0001f5d1",
+             "title": "Clear Game Caches",
+             "subtitle": "Delete stale cache files that cause loading-screen crashes",
+             "bullets": ["Deletes localthumbcache.package",
+                         "Clears cachestr/ slot files",
+                         "Must do this every time you add, remove, or update any mod"],
+             "btn_label": "Clear All Caches",
+             "action": self._wiz_step_cache, "time": "Instant"},
+
+            {"key": "save",     "num": "6", "color": NEON_PINK,
+             "icon": "\U0001f4be",
+             "title": "Check Save File",
+             "subtitle": "Optional: scan for orphaned mod references that corrupt saves",
+             "bullets": ["Your save remembers every mod resource it's ever touched",
+                         "Removed mods leave 'orphaned' references that cause crashes",
+                         "Generates a clean copy with orphans removed (original kept)"],
+             "btn_label": "Show My Save Files",
+             "action": self._wiz_step_save, "time": "2–5 min per save"},
         ]
 
-        for step in steps:
-            self._wiz_build_step_card(scroll, step)
+        for i, step in enumerate(steps):
+            self._wiz_build_accordion_step(scroll, step, is_last=(i == len(steps)-1))
             self._wiz_states[step["key"]] = self._WIZ_PENDING
 
-        # Bottom: launch-ready panel (hidden until step 5 complete)
-        self._wiz_ready_frame = ctk.CTkFrame(scroll, fg_color="#001a0d",
-                                              border_color=NEON_GREEN, border_width=2,
-                                              corner_radius=8)
-        self._wiz_ready_lbl = ctk.CTkLabel(self._wiz_ready_frame,
-                                            text="Complete steps 1–5 above to unlock",
-                                            font=("Courier New", 13, "bold"),
-                                            text_color=TEXT_DIM)
-        self._wiz_ready_lbl.pack(pady=(12, 4))
+        # ── Launch-ready banner ──────────────────────────────────────────────────────
+        self._wiz_ready_frame = ctk.CTkFrame(
+            scroll, fg_color="#001a0d",
+            border_color=NEON_GREEN, border_width=2, corner_radius=8)
         ctk.CTkLabel(self._wiz_ready_frame,
-                     text="",
-                     font=FONT_SMALL,
-                     text_color=TEXT_DIM).pack()
-        self._wiz_ready_frame.pack(fill="x", padx=6, pady=(12, 6))
+                     text="Complete steps 1–5 above to unlock the launch panel",
+                     font=("Courier New", 11), text_color=TEXT_DIM).pack(pady=14)
+        self._wiz_ready_frame.pack(fill="x", padx=12, pady=(8, 12))
 
-        # Highlight step 1 on load
         self.after(800, lambda: self._wiz_set_active("detect"))
 
+    def _wiz_build_accordion_step(self, parent, step: dict, is_last: bool = False):
+        """
+        Build one accordion step.
+        Layout: [StepIndicator] [content area — expands when active, collapses when done]
+        A ConnectorLine sits between steps.
+        """
+        key   = step["key"]
+        color = step["color"]
+
+        # ── Outer row: indicator + content ──
+        row = ctk.CTkFrame(parent, fg_color="transparent")
+        row.pack(fill="x", padx=8, pady=0)
+        row.columnconfigure(1, weight=1)
+
+        # ── Left column: indicator + connector ──
+        left_col = ctk.CTkFrame(row, fg_color="transparent", width=52)
+        left_col.grid(row=0, column=0, sticky="ns", padx=(0, 8))
+        left_col.grid_propagate(False)
+
+        indicator = StepIndicator(left_col, step_num=step["num"],
+                                   step_color=color, state="PENDING", size=52)
+        indicator.pack()
+        self._wiz_indicators[key] = indicator
+
+        # ── Right column: content area ──
+        content = ctk.CTkFrame(row, fg_color="transparent")
+        content.grid(row=0, column=1, sticky="nsew", pady=4)
+
+        # Header row: icon + title + status badge
+        hdr_row = ctk.CTkFrame(content, fg_color="transparent")
+        hdr_row.pack(fill="x")
+        hdr_row.columnconfigure(1, weight=1)
+
+        ctk.CTkLabel(hdr_row, text=step["icon"],
+                     font=("Segoe UI Emoji", 16),
+                     text_color=TEXT_DIM).grid(row=0, column=0, padx=(0, 6))
+
+        title_lbl = ctk.CTkLabel(hdr_row,
+                                  text=step["title"],
+                                  font=("Courier New", 12, "bold"),
+                                  text_color=TEXT_DIM, anchor="w")
+        title_lbl.grid(row=0, column=1, sticky="ew")
+
+        status_badge = ctk.CTkLabel(hdr_row, text="PENDING",
+                                     font=("Courier New", 8, "bold"),
+                                     text_color=TEXT_DIM,
+                                     fg_color="#0a0a1a",
+                                     corner_radius=4, padx=8, pady=3)
+        status_badge.grid(row=0, column=2, padx=(8, 0))
+
+        # Subtitle (always visible)
+        subtitle_lbl = ctk.CTkLabel(content,
+                                     text=step["subtitle"],
+                                     font=("Courier New", 9),
+                                     text_color=TEXT_DIM, anchor="w")
+        subtitle_lbl.pack(fill="x", pady=(2, 0))
+
+        # ── Expanded detail frame (ACTIVE state) ──
+        detail_frame = ctk.CTkFrame(content, fg_color="#080820",
+                                     border_color=color, border_width=1,
+                                     corner_radius=6)
+        # Bullets
+        for bullet in step.get("bullets", []):
+            ctk.CTkLabel(detail_frame, text=f"  •  {bullet}",
+                         font=("Courier New", 9), text_color="#8888aa",
+                         justify="left", anchor="w").pack(
+                             fill="x", padx=10, pady=1)
+        # Time estimate
+        ctk.CTkLabel(detail_frame,
+                     text=f"  ⏱  Typical time: {step.get('time','')}",
+                     font=("Courier New", 8),
+                     text_color=TEXT_DIM).pack(anchor="w", padx=10, pady=(4, 2))
+        # Action button
+        btn_row_f = ctk.CTkFrame(detail_frame, fg_color="transparent")
+        btn_row_f.pack(fill="x", padx=10, pady=(4, 10))
+        btn = NeonButton(btn_row_f, f"  ▶  {step['btn_label']}  ",
+                         command=step["action"],
+                         color=color, height=38)
+        btn.pack(side="left")
+        arrow_lbl = ctk.CTkLabel(btn_row_f, text="",
+                                  font=("Courier New", 9, "bold"),
+                                  text_color=NEON_GREEN)
+        arrow_lbl.pack(side="left", padx=10)
+
+        # ── Result summary (shown after done) ──
+        result_lbl = ctk.CTkLabel(content, text="",
+                                   font=("Courier New", 9, "bold"),
+                                   text_color=NEON_GREEN,
+                                   justify="left", anchor="w",
+                                   wraplength=700)
+
+        # ── Divider line ──
+        div = ctk.CTkFrame(parent, fg_color="#0a0a1a", height=1)
+        div.pack(fill="x", padx=20, pady=0)
+
+        # ── Connector line below (links to next step) ──
+        if not is_last:
+            connector_row = ctk.CTkFrame(parent, fg_color="transparent")
+            connector_row.pack(fill="x", padx=8)
+            conn = ConnectorLine(connector_row, done=False, height=20)
+            conn.pack(side="left")
+            self._wiz_connectors[key] = conn
+
+        # Store all widget refs
+        self._wiz_widgets[key] = {
+            "row":          row,
+            "left_col":     left_col,
+            "indicator":    indicator,
+            "content":      content,
+            "title_lbl":    title_lbl,
+            "subtitle_lbl": subtitle_lbl,
+            "status_badge": status_badge,
+            "detail_frame": detail_frame,
+            "result_lbl":   result_lbl,
+            "btn":          btn,
+            "arrow_lbl":    arrow_lbl,
+            "color":        color,
+        }
+
+    # Keep old method signature for compatibility but delegate to accordion
     def _wiz_build_step_card(self, parent, step: dict):
         """Build one wizard step card."""
         key   = step["key"]
@@ -1508,37 +1757,90 @@ github.com/HuciferX/Sims4ModGuard
 
     def _wiz_set_state(self, key: str, state: str, detail: str = "",
                        next_key: str = ""):
-        """Update a step's visual state."""
+        """Update a step's visual state — drives StepIndicator + accordion content."""
         self._wiz_states[key] = state
         w = self._wiz_widgets.get(key, {})
         if not w:
             return
-        color = self._WIZ_COLORS.get(state, TEXT_DIM)
-        w["status_lbl"].configure(text=state, text_color=color,
-                                   fg_color=_dim_color(color, 0.15))
-        if detail:
-            w["detail_lbl"].configure(text=detail)
 
-        if state in (self._WIZ_DONE_OK, self._WIZ_DONE_WARN, self._WIZ_DONE_FAIL):
+        # Map wizard states to StepIndicator states
+        indicator_map = {
+            self._WIZ_PENDING:   "PENDING",
+            self._WIZ_RUNNING:   "RUNNING",
+            self._WIZ_DONE_OK:   "DONE",
+            self._WIZ_DONE_WARN: "WARNING",
+            self._WIZ_DONE_FAIL: "CRITICAL",
+            "RUNNING":            "RUNNING",
+            "COMPLETE":           "DONE",
+        }
+        ind_state = indicator_map.get(state, "PENDING")
+        if key in self._wiz_indicators:
+            self._wiz_indicators[key].set_state(ind_state)
+
+        # Status badge text + color
+        badge_colors = {
+            self._WIZ_PENDING:   ("PENDING",      TEXT_DIM,    "#0a0a1a"),
+            self._WIZ_RUNNING:   ("RUNNING...",    NEON_AMBER,  _dim_color(NEON_AMBER, 0.12)),
+            self._WIZ_DONE_OK:   ("COMPLETE ✔",    NEON_GREEN,  _dim_color(NEON_GREEN, 0.12)),
+            self._WIZ_DONE_WARN: ("ISSUES FOUND",  NEON_AMBER,  _dim_color(NEON_AMBER, 0.12)),
+            self._WIZ_DONE_FAIL: ("CRITICAL ✗",    NEON_RED,    _dim_color(NEON_RED,   0.12)),
+        }
+        badge_text, badge_fg, badge_bg = badge_colors.get(
+            state, (state, TEXT_DIM, "#0a0a1a"))
+        w["status_badge"].configure(text=badge_text, text_color=badge_fg,
+                                     fg_color=badge_bg)
+        w["title_lbl"].configure(text_color=badge_fg)
+
+        # Show result summary and hide detail frame for done states
+        is_done = state in (self._WIZ_DONE_OK, self._WIZ_DONE_WARN, self._WIZ_DONE_FAIL)
+        is_active = state in (self._WIZ_RUNNING, self._WIZ_PENDING)
+
+        if is_done:
+            w["detail_frame"].pack_forget()
+            if detail:
+                w["result_lbl"].configure(text=detail)
+                w["result_lbl"].pack(fill="x", padx=2, pady=(2, 8))
+            # Update connector line
+            if key in self._wiz_connectors:
+                self._wiz_connectors[key].set_done(True)
+            # Re-enable button for re-run
             w["btn"].configure(state="normal")
-            # Show next arrow
             if next_key:
-                w["arrow_lbl"].configure(text="  → Step " + next_key.upper() + " ready")
+                w["arrow_lbl"].configure(text=f"  → {next_key.title()} ready")
                 self._wiz_set_active(next_key)
+
         elif state == self._WIZ_RUNNING:
-            w["btn"].configure(state="disabled",
-                               text="  RUNNING...  please wait")
+            w["btn"].configure(state="disabled", text="  ⏳  Running...")
+
+        # Update overall progress bar
+        done_count = sum(1 for s in self._wiz_states.values()
+                         if s in (self._WIZ_DONE_OK, self._WIZ_DONE_WARN,
+                                  self._WIZ_DONE_FAIL))
+        total = max(len(self._wiz_states), 1)
+        progress = done_count / total
+        if hasattr(self, '_wiz_overall_bar'):
+            self._wiz_overall_bar.set(progress)
+            self._wiz_prog_lbl.configure(
+                text=f"Step {done_count} of {total} complete")
 
     def _wiz_set_active(self, key: str):
-        """Highlight the current active step card."""
+        """Expand the active step, compact all others."""
         self._wiz_active_step = key
         for k, w in self._wiz_widgets.items():
             if k == key:
+                # Expand: show detail frame, highlight title
                 color = w["color"]
-                w["card"].configure(border_color=color, border_width=2)
-                w["btn"].configure(state="normal")
+                w["title_lbl"].configure(text_color=color)
+                w["detail_frame"].pack(fill="x", padx=2, pady=(4, 4))
+                w["result_lbl"].pack_forget()
+                w["btn"].configure(state="normal",
+                                    text=f"  ▶  {w['btn'].cget('text').split('▶')[-1].strip() or 'Go'}  ")
+                if k in self._wiz_indicators:
+                    self._wiz_indicators[k].set_state("ACTIVE")
             elif self._wiz_states.get(k) == self._WIZ_PENDING:
-                w["card"].configure(border_color=TEXT_DIM, border_width=1)
+                # Compact: hide detail frame
+                w["detail_frame"].pack_forget()
+                w["title_lbl"].configure(text_color=TEXT_DIM)
 
     # ── Step actions ─────────────────────────────────────────────────────────
 
@@ -1579,6 +1881,89 @@ github.com/HuciferX/Sims4ModGuard
             self._wiz_widgets["detect"]["btn"].configure(
                 text=">> TRY AGAIN / BROWSE",
                 command=self._wiz_detect_browse)
+
+    def _wiz_show_fix_all_card(self, report):
+        """Insert a prominent FIX ALL card after step 3 in the wizard scroll."""
+        # Remove old one if exists
+        for child in self._wiz_scroll.winfo_children():
+            if getattr(child, '_is_fix_all', False):
+                child.destroy()
+
+        near_dups = [d for d in report.dup_file_pairs if d.is_near_duplicate]
+        crit = report.critical_count
+        total_fix = crit + len(near_dups)
+
+        card = ctk.CTkFrame(self._wiz_scroll,
+                            fg_color="#0d001a",
+                            border_color=NEON_PINK, border_width=2,
+                            corner_radius=8)
+        card._is_fix_all = True
+        card.pack(fill="x", padx=6, pady=6, after=self._wiz_widgets["simulate"]["card"])
+
+        ctk.CTkLabel(card,
+                     text="  ⚡ ONE-CLICK FIX ALL",
+                     font=("Courier New", 13, "bold"),
+                     text_color=NEON_PINK).pack(anchor="w", padx=12, pady=(10, 2))
+        ctk.CTkLabel(card,
+                     text=f"  Quarantines {crit} critical mod(s) + {len(near_dups)} near-exact "
+                          f"duplicate(s), then clears caches. "
+                          f"Total: {total_fix} file(s) moved to MODS_DISABLED.",
+                     font=FONT_SMALL, text_color=TEXT_DIM,
+                     wraplength=700, justify="left").pack(anchor="w", padx=12, pady=(0, 6))
+
+        NeonButton(card, f"  ⚡ FIX ALL {total_fix} ISSUES NOW  ",
+                   command=lambda r=report: self._wiz_fix_all(r),
+                   color=NEON_PINK, height=44).pack(
+                       padx=12, pady=(0, 12), fill="x")
+
+    def _wiz_fix_all(self, report):
+        """One-shot: quarantine criticals + near-exact dupes + clear cache."""
+        if not self.qm or not self.s4_folder:
+            messagebox.showwarning("No Folder", "Select a Sims 4 folder first.")
+            return
+
+        near_dups = [d for d in report.dup_file_pairs if d.is_near_duplicate]
+        crit_files = list({i.file.split("::")[0]
+                           for i in report.all_issues
+                           if i.severity == "CRITICAL" and
+                              (i.file.endswith(".ts4script") or
+                               i.file.endswith(".package"))})
+        dup_files  = list({d.remove_path for d in near_dups})
+        all_files  = list(set(crit_files + dup_files))
+
+        if not all_files:
+            messagebox.showinfo("Nothing to Fix", "No files to quarantine.")
+            return
+
+        if not messagebox.askyesno(
+                "FIX ALL",
+                f"Safely quarantine {len(all_files)} file(s)?\n"
+                f"  • {len(crit_files)} critical script(s)\n"
+                f"  • {len(dup_files)} near-exact duplicate(s)\n\n"
+                f"Caches will also be cleared automatically.\n"
+                f"Files are NEVER deleted — restore from Fix & Repair."):
+            return
+
+        moved = 0
+        for path_str in all_files:
+            p = Path(path_str)
+            if p.exists():
+                reason = ("Critical — boot simulator" if path_str in crit_files
+                          else "Near-exact duplicate CC")
+                if self.qm.quarantine(p, reason, auto=True):
+                    moved += 1
+
+        self._clear_cache_silent()
+
+        summary = (f"✓ Fixed! {moved} of {len(all_files)} files quarantined. "
+                   f"Caches cleared. Proceed to Step 5 to verify.")
+
+        # Update step 4 and 5 state
+        self._wiz_set_state("fix",   self._WIZ_DONE_OK,
+                            f"✓ {moved} files quarantined via FIX ALL.", "cache")
+        Toast(self, f"⚡ FIX ALL complete — {moved} files quarantined", sev="ok")
+        self._status(f"* FIX ALL: {moved} files quarantined + caches cleared")
+        messagebox.showinfo("FIX ALL Complete", summary)
 
     def _wiz_detect_browse(self):
         path = filedialog.askdirectory(
@@ -1730,44 +2115,313 @@ github.com/HuciferX/Sims4ModGuard
                   f"   You are now ready to launch the game!\n"
                   f"   Optionally run Step 6 to check your save file first.")
         self._wiz_set_state("cache", self._WIZ_DONE_OK, detail, "save")
+        Toast(self, f"✓ Caches cleared ({mb} MB freed) — ready to launch!", sev="ok")
         # Unlock the ready banner
         self._wiz_update_ready_banner()
 
+    # ── Step 6: inline Save Doctor ─────────────────────────────────────────────────
+
     def _wiz_step_save(self):
-        """Step 6: open Save Doctor."""
+        """Step 6: inline save selector, scan, and auto-fix inside the step card."""
         if not self.s4_folder:
             messagebox.showwarning("Step 1 First", "Complete Step 1 first.")
             return
-        self._switch_tab("savedoctor")
-        self.after(100, self._list_saves)
-        self._wiz_set_state("save", self._WIZ_RUNNING,
-                            "Switched to Save Doctor tab — select a save and click ANALYZE.")
+
+        w = self._wiz_widgets["save"]
+        card = w["card"]
+
+        # Clean up any previous inline frame
+        for child in card.winfo_children():
+            if getattr(child, '_is_save_sub', False):
+                child.destroy()
+
+        # Init state
+        self._wiz_selected_save: Path | None = None
+        self._wiz_save_report   = None
+        self._wiz_sa            = None
+
+        # ── Sub-frame injected into the card at row 5 ──
+        sub = ctk.CTkFrame(card, fg_color="#0d0022",
+                           border_color=NEON_PINK, border_width=1,
+                           corner_radius=6)
+        sub._is_save_sub = True
+        sub.grid(row=5, column=0, columnspan=2,
+                 sticky="ew", padx=12, pady=(0, 12))
+
+        # ─ Header
+        ctk.CTkLabel(sub,
+                     text="  Select a save file to check:",
+                     font=("Courier New", 10, "bold"),
+                     text_color=NEON_PINK).pack(anchor="w", padx=4, pady=(8, 4))
+
+        # ─ Save list
+        game_root = (Path(self._inv_root_var.get())
+                     if hasattr(self, '_inv_root_var') else DEFAULT_GAME_ROOT)
+        sa = SaveAnalyzer(self.s4_folder, game_root,
+                          game_index=getattr(self, '_game_index_cached', None))
+        self._wiz_sa = sa
+        saves = sa.list_saves()
+
+        if not saves:
+            ctk.CTkLabel(sub, text="  No .save files found in your saves folder.",
+                         font=FONT_SMALL, text_color=TEXT_DIM).pack(
+                             anchor="w", padx=8, pady=(0, 8))
+            self._wiz_set_state("save", self._WIZ_DONE_WARN,
+                                "⚠  No save files found. Nothing to check.")
+            return
+
+        # Scrollable list of save buttons
+        list_frame = ctk.CTkScrollableFrame(sub, fg_color=BG_DEEP,
+                                             height=min(130, len(saves) * 36 + 12),
+                                             scrollbar_button_color="#2a001a")
+        list_frame.pack(fill="x", padx=8, pady=(0, 6))
+
+        self._wiz_save_btns: dict[str, ctk.CTkButton] = {}
+
+        for save_path in saves[:12]:
+            try:
+                size_mb = save_path.stat().st_size / (1024 * 1024)
+                mtime   = datetime.fromtimestamp(
+                    save_path.stat().st_mtime).strftime("%Y-%m-%d  %H:%M")
+            except Exception:
+                size_mb, mtime = 0.0, "?"
+            label = f"  {save_path.name}   ({size_mb:.0f} MB  |  {mtime})"
+            btn = ctk.CTkButton(
+                list_frame, text=label,
+                font=("Courier New", 9),
+                fg_color=BG_CARD,
+                border_color=NEON_PINK, border_width=1,
+                text_color=TEXT_DIM,
+                hover_color=_dim_color(NEON_PINK, 0.18),
+                anchor="w", corner_radius=4, height=32,
+                command=lambda p=save_path: self._wiz_save_select(p))
+            btn.pack(fill="x", padx=4, pady=2)
+            self._wiz_save_btns[str(save_path)] = btn
+
+        # ─ Action row: SCAN + AUTO FIX
+        act_row = ctk.CTkFrame(sub, fg_color="transparent")
+        act_row.pack(fill="x", padx=8, pady=(0, 4))
+
+        self._wiz_save_scan_btn = NeonButton(
+            act_row, ">> SCAN SELECTED SAVE",
+            command=self._wiz_run_save_scan,
+            color=NEON_PINK, height=38, width=230)
+        self._wiz_save_scan_btn.pack(side="left", padx=(0, 6))
+        self._wiz_save_scan_btn.configure(state="disabled")
+
+        self._wiz_save_fix_btn = NeonButton(
+            act_row, "⚡ AUTO FIX — GENERATE CLEAN SAVE",
+            command=self._wiz_run_save_fix,
+            color=NEON_GREEN, height=38, width=280)
+        self._wiz_save_fix_btn.pack(side="left")
+        self._wiz_save_fix_btn.configure(state="disabled")
+
+        # ─ Results label
+        self._wiz_save_result_lbl = ctk.CTkLabel(
+            sub, text="←  Click a save above to select it, then SCAN.",
+            font=("Courier New", 9), text_color=TEXT_DIM,
+            justify="left", anchor="w", wraplength=730)
+        self._wiz_save_result_lbl.pack(fill="x", padx=8, pady=(0, 8))
+
+        # Mark step as active/open
+        w["status_lbl"].configure(text="SELECT SAVE", text_color=NEON_PINK,
+                                   fg_color=_dim_color(NEON_PINK, 0.15))
+        w["btn"].configure(text=">> SHOW MY SAVE FILES")  # re-enable
+
+    def _wiz_save_select(self, save_path: Path):
+        """Highlight a save file selection and enable the scan button."""
+        self._wiz_selected_save = save_path
+        self._wiz_save_report   = None
+
+        # Highlight selected, dim others
+        for path_str, btn in self._wiz_save_btns.items():
+            if path_str == str(save_path):
+                btn.configure(border_color=NEON_GREEN,
+                              text_color=NEON_GREEN,
+                              fg_color=_dim_color(NEON_GREEN, 0.08))
+            else:
+                btn.configure(border_color=NEON_PINK,
+                              text_color=TEXT_DIM,
+                              fg_color=BG_CARD)
+
+        size_mb = save_path.stat().st_size / (1024 * 1024)
+        self._wiz_save_result_lbl.configure(
+            text=f"✓ Selected: {save_path.name}  ({size_mb:.0f} MB)\n"
+                 f"  Click SCAN SELECTED SAVE to check for broken mod references.",
+            text_color=NEON_GREEN)
+        self._wiz_save_scan_btn.configure(state="normal")
+        self._wiz_save_fix_btn.configure(state="disabled")
+
+    def _wiz_run_save_scan(self):
+        """Scan the selected save file for orphaned references (background thread)."""
+        if not self._wiz_selected_save or not self._wiz_sa:
+            return
+        self._wiz_save_scan_btn.configure(state="disabled", text="SCANNING...")
+        self._wiz_save_fix_btn.configure(state="disabled")
+        self._wiz_save_result_lbl.configure(
+            text="Scanning save file for orphaned mod references...\n"
+                 "This compares every resource ID in your save against\n"
+                 "your installed mods and the base game. Please wait.",
+            text_color=NEON_AMBER)
+
+        save_path = self._wiz_selected_save
+        sa        = self._wiz_sa
+
+        def worker():
+            def log(m):
+                self.after(0, lambda msg=m:
+                    self._wiz_save_result_lbl.configure(text=msg, text_color=TEXT_DIM)
+                    if self._wiz_save_result_lbl.winfo_exists() else None)
+            report = sa.analyze(save_path, progress_cb=log)
+            self.after(0, lambda r=report: self._wiz_save_scan_done(r))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _wiz_save_scan_done(self, report):
+        """Handle save scan completion — show results inline."""
+        self._wiz_save_report = report
+        self._wiz_save_scan_btn.configure(
+            state="normal", text=">> SCAN SELECTED SAVE")
+
+        if report.is_clean:
+            result = (
+                f"✓  SAVE IS CLEAN — no orphaned references found!\n"
+                f"   {report.total_resources:,} resources checked and all accounted for.\n"
+                f"   This save is safe to load with your current mod set."
+            )
+            self._wiz_save_result_lbl.configure(text=result, text_color=NEON_GREEN)
+            self._wiz_set_state("save", self._WIZ_DONE_OK,
+                                f"✓  Save is clean — {report.total_resources:,} resources verified.")
+            Toast(self, f"✓ {report.save_path.split(chr(92))[-1] if chr(92) in report.save_path else report.save_path} is clean!", sev="ok")
+            self._wiz_update_ready_banner()
+        else:
+            crit = report.critical_orphans
+            warn = report.warning_orphans
+            # Build type breakdown summary
+            top_types = sorted(report.orphan_by_type.items(),
+                               key=lambda x: -x[1])[:4]
+            type_summary = "  |  ".join(f"{t}: {n}" for t, n in top_types)
+
+            result = (
+                f"⚠  Found {report.orphaned_resources} orphaned references in this save.\n"
+                f"   Critical (will cause issues): {crit}\n"
+                f"   Warnings (minor impact):      {warn}\n"
+                f"   Top types: {type_summary}\n\n"
+                f"   What this means: when you load this save, the game will try to find\n"
+                f"   resources from mods that are no longer installed. This can cause\n"
+                f"   corrupted Sims, missing traits, and loading crashes.\n\n"
+                f"   ↓  Click AUTO FIX to generate a cleaned copy of this save.\n"
+                f"   Your original is backed up to .save.bak before any changes."
+            )
+            self._wiz_save_result_lbl.configure(text=result, text_color=NEON_AMBER)
+            self._wiz_save_fix_btn.configure(state="normal")
+            self._wiz_set_state("save", self._WIZ_DONE_WARN,
+                                f"⚠  {report.orphaned_resources} orphaned refs found — click AUTO FIX below")
+            Toast(self, f"⚠ Save has {report.orphaned_resources} orphaned references", sev="warning")
+
+    def _wiz_run_save_fix(self):
+        """Generate a clean save (background thread)."""
+        if not self._wiz_save_report or not self._wiz_sa:
+            return
+        report = self._wiz_save_report
+        if not messagebox.askyesno(
+                "Generate Clean Save",
+                f"Remove {report.orphaned_resources} orphaned references from\n"
+                f"{Path(report.save_path).name}?\n\n"
+                f"What happens:\n"
+                f"  • Original backed up to .save.bak (NEVER deleted)\n"
+                f"  • Clean copy written as {Path(report.save_path).stem}_clean.save\n"
+                f"  • Affected Sims may lose traits/careers from removed mods\n"
+                f"  • Building objects from removed mods will disappear from lots"):
+            return
+
+        self._wiz_save_fix_btn.configure(state="disabled", text="GENERATING...")
+        self._wiz_save_scan_btn.configure(state="disabled")
+
+        sa     = self._wiz_sa
+        result = self._wiz_save_result_lbl
+
+        def worker():
+            def log(m):
+                self.after(0, lambda msg=m:
+                    result.configure(text=msg, text_color=NEON_CYAN)
+                    if result.winfo_exists() else None)
+            try:
+                out_path = sa.generate_clean_save(report, progress_cb=log)
+                self.after(0, lambda p=out_path: self._wiz_save_fix_done(report, p))
+            except Exception as e:
+                self.after(0, lambda err=str(e): (
+                    self._wiz_save_fix_btn.configure(
+                        state="normal", text="⚡ AUTO FIX — GENERATE CLEAN SAVE"),
+                    self._wiz_save_scan_btn.configure(state="normal"),
+                    messagebox.showerror("Fix Failed", f"Clean save failed:\n{err}")))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _wiz_save_fix_done(self, report, out_path: Path):
+        """Show clean-save success inline."""
+        self._wiz_save_fix_btn.configure(
+            state="normal", text="⚡ AUTO FIX — GENERATE CLEAN SAVE")
+        self._wiz_save_scan_btn.configure(state="normal")
+
+        out_name = out_path.name
+        detail = (
+            f"✓  CLEAN SAVE WRITTEN: {out_name}\n"
+            f"   {report.resources_removed} orphaned entries removed.\n"
+            f"   Original backed up to: {Path(report.save_path).name}.bak\n"
+            f"   Load {out_name} next time you start the game."
+        )
+        self._wiz_save_result_lbl.configure(text=detail, text_color=NEON_GREEN)
+        self._wiz_set_state("save", self._WIZ_DONE_OK,
+                            f"✓  Clean save written: {out_name}  ({report.resources_removed} entries removed)")
+        Toast(self, f"✓ Clean save ready: {out_name}", sev="ok")
+        self._wiz_update_ready_banner()
 
     def _wiz_update_ready_banner(self):
         """Show/update the launch-ready banner at the bottom of the wizard."""
-        report = self._wiz_boot_report or self._boot_report
-        prob   = report.crash_probability if report else 0
-        verdict = report.verdict_label    if report else "UNKNOWN"
-        color   = report.verdict_color    if report else NEON_GREEN
+        report  = self._wiz_boot_report or self._boot_report
+        prob    = report.crash_probability if report else 0
+        verdict = report.verdict_label     if report else "READY"
+        color   = report.verdict_color     if report else NEON_GREEN
+        grade   = report.health_grade      if report else "A"
+        gc      = report.health_grade_color if report else NEON_GREEN
 
         for w in self._wiz_ready_frame.winfo_children():
             w.destroy()
 
-        ctk.CTkLabel(self._wiz_ready_frame,
+        top = ctk.CTkFrame(self._wiz_ready_frame, fg_color="transparent")
+        top.pack(fill="x", padx=16, pady=(12, 4))
+
+        # Grade circle
+        ctk.CTkLabel(top,
+                     text=grade,
+                     font=("Courier New", 48, "bold"),
+                     text_color=gc).pack(side="left", padx=(0, 16))
+
+        right = ctk.CTkFrame(top, fg_color="transparent")
+        right.pack(side="left", anchor="w")
+        ctk.CTkLabel(right,
                      text="SYSTEM STATUS — READY TO BOOT",
-                     font=("Courier New", 14, "bold"),
-                     text_color=NEON_GREEN).pack(pady=(12, 2))
-        ctk.CTkLabel(self._wiz_ready_frame,
-                     text=f"Crash probability: {prob}%   |   Verdict: {verdict}",
-                     font=("Courier New", 12, "bold"),
-                     text_color=color).pack(pady=(0, 4))
-        ctk.CTkLabel(self._wiz_ready_frame,
-                     text="Caches cleared. Mods checked. You can launch the game.",
-                     font=FONT_LABEL, text_color=TEXT_DIM).pack(pady=(0, 8))
+                     font=("Courier New", 13, "bold"),
+                     text_color=NEON_GREEN).pack(anchor="w")
+        ctk.CTkLabel(right,
+                     text=f"{verdict}   |   Crash risk: {prob}%   |   Grade: {grade}",
+                     font=("Courier New", 11, "bold"),
+                     text_color=color).pack(anchor="w")
+        ctk.CTkLabel(right,
+                     text="Caches cleared. Mods checked. Launch when ready.",
+                     font=FONT_SMALL, text_color=TEXT_DIM).pack(anchor="w")
+
         NeonButton(self._wiz_ready_frame,
-                   ">> LAUNCH SIMS 4",
+                   ">> LAUNCH SIMS 4  —  OPEN LAUNCHER",
                    command=lambda: self._switch_tab("launcher"),
-                   color=NEON_GREEN, height=44).pack(pady=(0, 12), padx=20, fill="x")
+                   color=NEON_GREEN, height=44).pack(
+                       pady=(4, 4), padx=20, fill="x")
+        NeonButton(self._wiz_ready_frame,
+                   "OPEN FULL HTML REPORT",
+                   command=self._rpt_open_browser,
+                   color=NEON_CYAN, height=36).pack(
+                       pady=(0, 12), padx=20, fill="x")
 
     # ─── Hook wizard into boot_done and save_done results ────────────────────
 
@@ -1803,8 +2457,194 @@ github.com/HuciferX/Sims4ModGuard
         if w:
             w["btn"].configure(text=">> RUN BOOT SIMULATION")
         self._wiz_set_state("simulate", state, detail, next_key)
+
+        # Show FIX ALL card if there are issues
+        if report.critical_count > 0 or sum(1 for d in report.dup_file_pairs if d.is_near_duplicate) > 0:
+            self._wiz_show_fix_all_card(report)
+
+        Toast(self,
+              f"✓ Simulation done: {report.verdict_label}  Grade: {report.health_grade}",
+              sev="ok" if report.crash_probability < 30 else
+                  "warning" if report.crash_probability < 60 else "critical")
         # Switch back to wizard
         self._switch_tab("wizard")
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # ── REPORT VIEWER TAB ─────────────────────────────────────────────────────
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def _build_report_tab(self, parent):
+        """In-app styled report viewer with Print and Export."""
+        self._rpt_text = None
+
+        # Toolbar
+        toolbar = ctk.CTkFrame(parent, fg_color=BG_HEADER)
+        toolbar.pack(fill="x", pady=(0, 8))
+        ctk.CTkLabel(toolbar, text="  LAST AUDIT REPORT",
+                     font=("Courier New", 11, "bold"),
+                     text_color=NEON_GREEN).pack(side="left", padx=4, pady=6)
+        NeonButton(toolbar, "REFRESH",
+                   command=self._rpt_refresh,
+                   color=NEON_GREEN, width=100, height=30).pack(side="left", padx=4, pady=4)
+        NeonButton(toolbar, "OPEN HTML",
+                   command=self._rpt_open_browser,
+                   color=NEON_CYAN, width=110, height=30).pack(side="left", padx=4, pady=4)
+        NeonButton(toolbar, "PRINT",
+                   command=self._rpt_print,
+                   color=NEON_AMBER, width=80, height=30).pack(side="left", padx=4, pady=4)
+        NeonButton(toolbar, "EXPORT...",
+                   command=self._rpt_export,
+                   color=NEON_PURPLE, width=100, height=30).pack(side="left", padx=4, pady=4)
+
+        # Text area
+        frame = neon_frame(parent, color=NEON_GREEN)
+        frame.pack(fill="both", expand=True)
+        self._rpt_text = ConsoleText(frame)
+        sb = ctk.CTkScrollbar(frame, command=self._rpt_text.yview,
+                               button_color="#002d1e")
+        sb.pack(side="right", fill="y")
+        self._rpt_text.configure(yscrollcommand=sb.set)
+        self._rpt_text.pack(fill="both", expand=True, padx=4, pady=4)
+        self._rpt_text.append("Run a Boot Simulation to generate a report.", "dim")
+        self._rpt_text.append("Then click REFRESH to view it here.", "dim")
+
+    def _rpt_refresh(self):
+        """Render the most recent BootReport as styled text in the Report Viewer."""
+        if not hasattr(self, '_rpt_text') or not self._rpt_text:
+            return
+        report = getattr(self, '_boot_report', None)
+        if not report:
+            return
+
+        t = self._rpt_text
+        t.clear()
+
+        # Header
+        t.append("═" * 60, "dim")
+        t.append(f"  SIMS4 MOD GUARDIAN  —  AUDIT REPORT", "header")
+        t.append(f"  Game: {report.game_version}   Mods: {report.total_packages:,} packages", "dim")
+        t.append("═" * 60, "dim")
+
+        # Verdict + grade
+        grade_tag = {"A": "ok", "B": "ok", "C": "warning", "D": "warning",
+                     "F": "critical"}.get(report.health_grade, "dim")
+        t.append(f"", "")
+        t.append(f"  CC GRADE: {report.health_grade}   —   {report.verdict_label}", grade_tag)
+        t.append(f"  Crash probability: {report.crash_probability}%   "
+                 f"Critical: {report.critical_count}   "
+                 f"Warnings: {report.warning_count}",
+                 "critical" if report.crash_probability >= 60 else
+                 "warning"  if report.crash_probability >= 30 else "ok")
+        near = sum(1 for d in report.dup_file_pairs if d.is_near_duplicate)
+        t.append(f"  Near-exact duplicates: {near}   Total pairs: {len(report.dup_file_pairs)}", "info")
+        t.append("", "")
+
+        # Phase table
+        t.append("─" * 60, "dim")
+        t.append(f"  {'PHASE':<22} {'STATUS':<10} {'ISSUES':>7}  KEY STAT", "bold")
+        t.append("─" * 60, "dim")
+        for ph in report.phases:
+            tag  = {"PASS": "ok", "WARN": "warning", "FAIL": "critical"}.get(ph.status, "dim")
+            from sims4modguard.run_logger import _phase_key_stat
+            t.append(f"  {ph.name:<22} {ph.status:<10} {len(ph.issues):>7}  {_phase_key_stat(ph)}", tag)
+        t.append("", "")
+
+        # Critical issues
+        criticals = [i for i in report.all_issues if i.severity == "CRITICAL"]
+        if criticals:
+            t.append("─" * 60, "dim")
+            t.append(f"  CRITICAL ISSUES ({len(criticals)}) — WILL CAUSE CRASHES", "critical")
+            t.append("─" * 60, "dim")
+            for iss in criticals:
+                t.append(f"  FILE: {iss.file[:65]}", "info")
+                t.append(f"  [!!] {iss.message}", "critical")
+                if iss.fix:
+                    t.append(f"  FIX: {iss.fix}", "ok")
+                mod = lookup_mod(iss.file)
+                if mod:
+                    t.append(f"  GET UPDATE: {mod['display_name']} ({mod['update_url']})", "info")
+                t.append("", "")
+        else:
+            t.append("  ✓ No critical issues — scripts are clean!", "ok")
+            t.append("", "")
+
+        # Near-exact duplicates
+        near_dups = [d for d in report.dup_file_pairs if d.is_near_duplicate]
+        if near_dups:
+            t.append("─" * 60, "dim")
+            t.append(f"  NEAR-EXACT DUPLICATES ({len(near_dups)}) — same CC twice", "warning")
+            t.append("─" * 60, "dim")
+            for rank, dup in enumerate(near_dups[:30], 1):
+                remove = Path(dup.remove_path).name
+                keep   = dup.name_a if dup.remove_path == dup.file_b else dup.name_b
+                t.append(f"  {rank:>3}. Shared: {dup.shared_ids:,}  Type: {dup.dominant_type}", "dim")
+                t.append(f"       KEEP:   {keep[:65]}", "ok")
+                t.append(f"       REMOVE: {remove[:65]}", "warning")
+                mod_a = lookup_mod(dup.file_a)
+                mod_b = lookup_mod(dup.file_b)
+                mod   = mod_a or mod_b
+                if mod:
+                    t.append(f"       UPDATE: {mod['display_name']}: {mod['update_url']}", "info")
+                t.append("", "")
+            if len(near_dups) > 30:
+                t.append(f"  ... and {len(near_dups)-30} more. Open HTML report for full list.", "dim")
+
+        t.append("═" * 60, "dim")
+        t.append("  Click OPEN HTML for the full report with clickable URLs.", "dim")
+        t.append("═" * 60, "dim")
+
+    def _rpt_open_browser(self):
+        path = getattr(self, '_last_report_path', None)
+        if not path:
+            logger = RunLogger()
+            path = logger.open_latest()
+        if path and path.exists():
+            webbrowser.open(path.as_uri())
+        else:
+            messagebox.showinfo("No Report", "Run a Boot Simulation first to generate a report.")
+
+    def _rpt_print(self):
+        path = getattr(self, '_last_report_path', None)
+        if not path:
+            logger = RunLogger()
+            path = logger.open_latest()
+        if path and path.exists():
+            try:
+                os.startfile(str(path), "print")
+                Toast(self, "Opening print dialog...", sev="info")
+            except Exception as e:
+                # Fallback: open in browser and let user print from there
+                webbrowser.open(path.as_uri())
+                messagebox.showinfo("Print",
+                    "Report opened in browser. Press Ctrl+P to print.")
+        else:
+            messagebox.showinfo("No Report", "Run a Boot Simulation first.")
+
+    def _rpt_export(self):
+        path = getattr(self, '_last_report_path', None)
+        if not path:
+            logger = RunLogger()
+            path = logger.open_latest()
+        if not path or not path.exists():
+            messagebox.showinfo("No Report", "Run a Boot Simulation first.")
+            return
+        dest = filedialog.asksaveasfilename(
+            title="Export Audit Report",
+            initialfile=path.name,
+            defaultextension=".html",
+            filetypes=[("HTML Report", "*.html"), ("Text Report", "*.txt"), ("All", "*.*")],
+        )
+        if dest:
+            dest_path = Path(dest)
+            if dest_path.suffix == ".txt":
+                # Copy text version
+                txt_path = path.with_suffix(".txt")
+                if txt_path.exists():
+                    shutil.copy2(txt_path, dest_path)
+            else:
+                shutil.copy2(path, dest_path)
+            Toast(self, f"✓ Report exported to {dest_path.name}", sev="ok")
+            self._status(f"* Report exported: {dest_path}")
 
     # ═══════════════════════════════════════════════════════════════════════════
     # ── INVENTORY TAB ──────────────────────────────────────────────────────────
@@ -2187,15 +3027,27 @@ github.com/HuciferX/Sims4ModGuard
         for w in v.winfo_children(): w.destroy()
         v.pack(fill="x", padx=8, pady=8)
 
-        prob_color = report.verdict_color
-        ctk.CTkLabel(v, text=f"VERDICT: {report.verdict_label}",
+        prob_color  = report.verdict_color
+        grade_color = report.health_grade_color
+
+        # Grade + verdict row
+        gv_row = ctk.CTkFrame(v, fg_color="transparent")
+        gv_row.pack(fill="x", padx=8, pady=(8, 0))
+        ctk.CTkLabel(gv_row,
+                     text=report.health_grade,
+                     font=("Courier New", 42, "bold"),
+                     text_color=grade_color).pack(side="left", padx=(0, 12))
+        vbox = ctk.CTkFrame(gv_row, fg_color="transparent")
+        vbox.pack(side="left", anchor="w")
+        ctk.CTkLabel(vbox, text=f"VERDICT: {report.verdict_label}",
                      font=("Courier New", 14, "bold"),
-                     text_color=prob_color).pack(pady=(8, 2))
-        ctk.CTkLabel(v, text=f"Crash probability: {report.crash_probability}%",
-                     font=("Courier New", 11), text_color=prob_color).pack()
-        ctk.CTkLabel(v,
-                     text=f"Critical: {report.critical_count}  |  Warnings: {report.warning_count}",
-                     font=FONT_LABEL, text_color=TEXT_DIM).pack(pady=(2, 6))
+                     text_color=prob_color).pack(anchor="w")
+        ctk.CTkLabel(vbox, text=f"Crash probability: {report.crash_probability}%",
+                     font=("Courier New", 11), text_color=prob_color).pack(anchor="w")
+        ctk.CTkLabel(vbox,
+                     text=f"Critical: {report.critical_count}  |  Warnings: {report.warning_count}  "
+                          f"|  Near-dupes: {sum(1 for d in report.dup_file_pairs if d.is_near_duplicate)}",
+                     font=FONT_LABEL, text_color=TEXT_DIM).pack(anchor="w", pady=(2, 0))
 
         if report.critical_count > 0:
             NeonButton(v, "XX QUARANTINE ALL CRITICAL",
@@ -2224,6 +3076,13 @@ github.com/HuciferX/Sims4ModGuard
 
         self._status(f"* Boot simulation done — {report.verdict_label} "
                      f"({report.crash_probability}% crash risk)")
+        Toast(self, f"✓ Boot simulation complete: {report.verdict_label} "
+              f"({report.crash_probability}% crash risk)  Grade: {report.health_grade}",
+              sev="ok" if report.crash_probability < 30 else
+                  "warning" if report.crash_probability < 60 else "critical")
+
+        # Refresh report viewer if open
+        self.after(500, self._rpt_refresh)
 
         # Auto-save HTML + text log
         try:
@@ -2238,6 +3097,8 @@ github.com/HuciferX/Sims4ModGuard
             self._last_report_path = html_path
         except Exception as e:
             self._boot_console.append(f"(Log save failed: {e})", "warning")
+            return
+        Toast(self, f"Report saved: {html_path.name}", sev="info")
 
     def _show_dup_panel(self, report):
         """Render the duplicate CC file list below the verdict in the boot sim tab."""

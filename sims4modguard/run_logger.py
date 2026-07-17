@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Optional
 
 from .boot_engine import BootReport, BootIssue, PhaseResult, DuplicateFilePair
+from .mod_database import lookup_mod, format_update_html, format_update_badge
 
 # ── Log directory ─────────────────────────────────────────────────────────────
 APP_DIR  = Path(__file__).parent.parent
@@ -367,9 +368,15 @@ class RunLogger:
 
         # Verdict box
         parts.append("<h2 id='verdict'>Verdict</h2>")
-        depth_color = "var(--red)" if report.total_depth_violations else "var(--green)"
+        depth_color  = "var(--red)" if report.total_depth_violations else "var(--green)"
+        grade_color  = report.health_grade_color
+        near_dup_cnt = sum(1 for d in report.dup_file_pairs if d.is_near_duplicate)
         parts.append(f"""
 <div class='verdict-box'>
+  <div style='text-align:center;min-width:80px'>
+    <div style='font-size:52px;font-weight:bold;color:{grade_color};line-height:1'>{report.health_grade}</div>
+    <div style='font-size:11px;color:var(--dim)'>CC GRADE</div>
+  </div>
   <div>
     <div class='verdict-label'>{report.verdict_label}</div>
     <div class='verdict-prob'>{report.crash_probability}% crash probability</div>
@@ -377,6 +384,7 @@ class RunLogger:
   <div class='verdict-counts'>
     Critical issues: <strong style='color:var(--red)'>{crit}</strong><br>
     Warnings:        <strong style='color:var(--amber)'>{warn}</strong><br>
+    Near-duplicates: <strong style='color:var(--pink)'>{near_dup_cnt}</strong><br>
     Scripts scanned: <strong>{report.total_scripts:,}</strong><br>
     Packages scanned:<strong>{report.total_packages:,}</strong><br>
     Depth violations:<strong style='color:{depth_color}'>{report.total_depth_violations}</strong>
@@ -412,12 +420,15 @@ class RunLogger:
                          "Quarantine them before launching.</p>")
             for iss in criticals:
                 why = _why(iss)
+                mod_entry = lookup_mod(iss.file)
+                url_html  = format_update_html(mod_entry) if mod_entry else ""
                 parts.append(f"""
 <div class='issue-card critical'>
   <div class='issue-file'>📄 {_esc(iss.file)}</div>
   <div class='issue-msg'>{_esc(iss.message)}</div>
   <div class='issue-why'><strong>Why this crashes:</strong> {_esc(why)}</div>
   {f"<div class='issue-fix'>{_esc(iss.fix)}</div>" if iss.fix else ""}
+  {url_html}
   <div style='color:var(--dim);font-size:10px;margin-top:4px'>Phase: {iss.phase}</div>
 </div>""")
         else:
@@ -528,6 +539,48 @@ class RunLogger:
             parts.append("<p style='color:var(--dim)'>No files were auto-quarantined during this run. "
                          "Use the Wizard or Fix &amp; Repair tab to quarantine the critical mods listed above.</p>")
 
+        # Update Links summary — all recognised mods found in the collection
+        all_filenames = set()
+        for iss in report.all_issues:
+            all_filenames.add(iss.file.split("::")[0])
+        for dup in report.dup_file_pairs:
+            all_filenames.add(dup.file_a)
+            all_filenames.add(dup.file_b)
+        seen_mod_ids: set = set()
+        update_entries: list = []
+        for fname in sorted(all_filenames):
+            entry = lookup_mod(fname)
+            if entry and entry["id"] not in seen_mod_ids:
+                seen_mod_ids.add(entry["id"])
+                update_entries.append((fname, entry))
+
+        if update_entries:
+            parts.append("<h2 id='updates' style='color:var(--cyan)'>🔗 Mod Update Links</h2>")
+            parts.append(
+                "<p style='color:var(--dim);font-size:11px;margin-bottom:8px'>"
+                "These mods were detected in your collection. "
+                "Click the mod name to go to its official download/update page."
+                "</p>")
+            parts.append("<table class='phase-table'>")
+            parts.append("<tr><th>Mod</th><th>Author</th><th>Availability</th>"
+                         "<th>WW Required</th><th>Description</th></tr>")
+            for fname, entry in update_entries:
+                tag   = ("<span style='color:var(--purple)'>Patreon</span>"
+                         if entry.get("patreon_required")
+                         else "<span style='color:var(--green)'>Free</span>")
+                ww    = ("<span style='color:var(--amber)'>Yes</span>"
+                         if entry.get("ww_dependency") else "No")
+                parts.append(
+                    f"<tr>"
+                    f"<td><a href='{entry['update_url']}' style='color:var(--cyan)'>"
+                    f"{_esc(entry['display_name'])}</a></td>"
+                    f"<td style='color:var(--dim)'>{_esc(entry['author'])}</td>"
+                    f"<td>{tag}</td>"
+                    f"<td>{ww}</td>"
+                    f"<td style='color:var(--dim);font-size:11px'>{_esc(entry['description'])}</td>"
+                    f"</tr>")
+            parts.append("</table>")
+
         # Stats
         parts.append("<h2 id='stats'>Scan Statistics</h2>")
         parts.append("<div class='stat-grid'>")
@@ -587,10 +640,12 @@ class RunLogger:
         lines.append(f"  Mods: {report.mods_folder}")
 
         s("VERDICT")
+        lines.append(f"  CC Health Grade:  {report.health_grade}")
         lines.append(f"  Result:           {report.verdict_label}")
         lines.append(f"  Crash probability:{report.crash_probability}%")
         lines.append(f"  Critical issues:  {report.critical_count}")
         lines.append(f"  Warnings:         {report.warning_count}")
+        lines.append(f"  Near-duplicates:  {sum(1 for d in report.dup_file_pairs if d.is_near_duplicate)}")
         lines.append(f"  Scripts scanned:  {report.total_scripts:,}")
         lines.append(f"  Packages scanned: {report.total_packages:,}")
         lines.append(f"  Depth violations: {report.total_depth_violations}")
@@ -643,11 +698,18 @@ class RunLogger:
                 lines.append(f"  {'#':<4} {'Shared':>7}  {'Type':<18}  Remove (quarantine this file)")
                 lines.append(f"  {'─'*4} {'─'*7}  {'─'*18}  {'─'*40}")
                 for rank, dup in enumerate(near_dups[:50], 1):
-                    keep = dup.name_a if dup.remove_path == dup.file_b else dup.name_b
+                    keep   = dup.name_a if dup.remove_path == dup.file_b else dup.name_b
                     remove = Path(dup.remove_path).name
                     lines.append(f"  {rank:<4} {dup.shared_ids:>7,}  {dup.dominant_type:<18}  {remove}")
-                    lines.append(f"       Keep: {keep}")
-                    lines.append(f"       {dup.recommendation}")
+                    lines.append(f"       Keep:   {keep}")
+                    lines.append(f"       Action: {dup.recommendation}")
+                    # Add update URL if known mod
+                    mod_a = lookup_mod(dup.file_a)
+                    mod_b = lookup_mod(dup.file_b)
+                    if mod_a:
+                        lines.append(f"       Update: {format_update_badge(mod_a)}")
+                    elif mod_b:
+                        lines.append(f"       Update: {format_update_badge(mod_b)}")
                     lines.append("")
                 if len(near_dups) > 50:
                     lines.append(f"  ... and {len(near_dups)-50} more near-exact pairs (see HTML report)")
@@ -661,6 +723,29 @@ class RunLogger:
                                  f"{dup.name_a[:25]}  vs  {dup.name_b[:25]}")
                 if len(minor_dups) > 20:
                     lines.append(f"  ... and {len(minor_dups)-20} more (see HTML report)")
+
+        # Update links summary in text report
+        if report.all_issues or report.dup_file_pairs:
+            all_fnames = set()
+            for iss in report.all_issues:
+                all_fnames.add(iss.file.split("::")[0])
+            for dup in report.dup_file_pairs:
+                all_fnames.add(dup.file_a); all_fnames.add(dup.file_b)
+            seen: set = set()
+            url_entries = []
+            for fn in sorted(all_fnames):
+                e = lookup_mod(fn)
+                if e and e["id"] not in seen:
+                    seen.add(e["id"])
+                    url_entries.append(e)
+            if url_entries:
+                s(f"MOD UPDATE LINKS ({len(url_entries)} recognized mods)")
+                for e in url_entries:
+                    tag = "[Patreon]" if e.get("patreon_required") else "[Free]  "
+                    ww  = " +WickedWhims" if e.get("ww_dependency") else ""
+                    lines.append(f"  {e['display_name']:<40} {tag}{ww}")
+                    lines.append(f"  → {e['update_url']}")
+                    lines.append("")
 
         if quarantined:
             s(f"QUARANTINED THIS RUN ({len(quarantined)} files)")

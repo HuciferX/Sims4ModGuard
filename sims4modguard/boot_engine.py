@@ -154,9 +154,17 @@ class BootReport:
     total_packages:   int = 0
     total_depth_violations: int = 0
     crash_probability: int = 0      # 0-100
+    health_grade:     str = "?"     # A / B / C / D / F
     phases:           List[PhaseResult]       = field(default_factory=list)
     all_issues:       List[BootIssue]         = field(default_factory=list)
     dup_file_pairs:   List[DuplicateFilePair] = field(default_factory=list)
+
+    @property
+    def health_grade_color(self) -> str:
+        return {
+            "A": "#00ff9f", "B": "#aaff00",
+            "C": "#ffaa00", "D": "#ff6600", "F": "#ff003c",
+        }.get(self.health_grade, "#5a6080")
 
     @property
     def critical_count(self) -> int:
@@ -880,6 +888,24 @@ class BootEngine:
             prob = min(99, prob + 5)
 
         self.report.crash_probability = prob
+
+        # ── CC Health Grade (A–F) ─────────────────────────────────────────
+        near_dups = sum(1 for d in self.report.dup_file_pairs if d.is_near_duplicate)
+        if crit >= 11:
+            grade = "F"
+        elif crit >= 3:
+            grade = "D"
+        elif crit >= 1:
+            grade = "C"
+        elif near_dups > 30 or warn >= 15000:
+            grade = "B"
+        elif near_dups > 10 or warn >= 5000:
+            grade = "B"
+        elif near_dups <= 10 and warn < 5000 and crit == 0:
+            grade = "A"
+        else:
+            grade = "B"
+        self.report.health_grade = grade
 
         self._emit(ph, 0.5,
                    f"VERDICT: {self.report.verdict_label} "
