@@ -36,6 +36,7 @@ from sims4modguard.save_analyzer  import SaveAnalyzer
 from sims4modguard.run_logger     import RunLogger
 from sims4modguard.mod_database   import lookup_mod
 from sims4modguard.step_indicator  import StepIndicator, ConnectorLine
+from sims4modguard              import updater as _updater
 
 # -- Theme constants ------------------------------------------------------------
 BG_DEEP     = "#050510"
@@ -284,6 +285,9 @@ class Sims4ModGuardApp(ctk.CTk):
 
         # Boot sequence
         self.after(600, self._boot_sequence)
+
+        # Auto-update check (runs 2 s after launch so the UI appears first)
+        self.after(2000, self._check_for_updates)
 
     # -- Build UI --------------------------------------------------------------
 
@@ -1089,6 +1093,18 @@ github.com/HuciferX/Sims4ModGuard
                 self._console.append(*msgs[i])
                 self.after(random.randint(40, 100), lambda: send(i + 1))
         send()
+
+    # -- Auto-updater ----------------------------------------------------------
+
+    def _check_for_updates(self):
+        """Called 2 s after launch.  Delegates to the updater module which runs
+        the GitHub API check on a background thread and opens UpdateDialog on
+        the main thread only when a newer release is available.
+        """
+        try:
+            _updater.check_and_prompt(self)
+        except Exception:
+            pass  # never block the app if the updater itself errors
 
     # -- Scan ------------------------------------------------------------------
 
